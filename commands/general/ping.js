@@ -5,7 +5,7 @@ const logger = require(path.join(__dirname, '../../utils/logger.js'));
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('ping')
-    .setDescription('Replies with Pong!'),
+    .setDescription('Replies with ping information.'),
   async execute(interaction) {
     const client = interaction.client;
     const sent = await interaction.reply({
