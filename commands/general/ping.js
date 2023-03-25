@@ -15,7 +15,7 @@ module.exports = {
     });
     interaction.editReply(`${sent.content}\nRoundtrip latency: ${sent.createdTimestamp - interaction.createdTimestamp}ms.`);
   },
-  async onError(interaction, error) {
+  async error(interaction, error) {
     logger.error(`Error executing ${interaction.commandName}`);
     logger.error(error);
   },

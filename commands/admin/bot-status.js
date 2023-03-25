@@ -69,7 +69,7 @@ module.exports = {
       logger.info(reply);
     }
   },
-  async onError(interaction, error) {
+  async error(interaction, error) {
     logger.error(`Error executing ${interaction.commandName}`);
     logger.error(error);
   },
