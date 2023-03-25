@@ -5,7 +5,9 @@ const logger = require(path.join(__dirname, '../utils/logger.js'));
 module.exports = {
 	name: Events.InteractionCreate,
 	async execute(interaction) {
-		if (!interaction.isChatInputCommand()) {return;}
+		if (!interaction.isChatInputCommand()) {
+			return;
+		}
 
 		const command = interaction.client.commands.get(interaction.commandName);
 		if (!command) {

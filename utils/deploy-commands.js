@@ -1,23 +1,19 @@
-const { REST, Routes } = require('discord.js');
+const { REST, Routes, Collection } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const config = require(path.join(__dirname, '../config.json'));
 const logger = require(path.join(__dirname, 'logger.js'));
+const parseCommands = require(path.join(__dirname, 'parse-commands.js'));
 const args = require('minimist')(process.argv.slice(2), { boolean: true });
 
-const commands = [];
-const commandsPath = path.join(__dirname, '../commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-
+const collection = new Collection();
 if (!args.remove) {
-	for (const file of commandFiles) {
-		const command = require(path.join(commandsPath, file));
-		commands.push(command.data.toJSON());
-	}
+	parseCommands(path.join(__dirname, '../commands'), collection);
 }
 
 // const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 const deploy = async (deployAll) => {
+	const commands = Array.from(collection.values()).map(c => c.data.toJSON());
 	const action = args.remove ? 'delet' : 'deploy';
 	const cmdLen = args.remove ? 'all' : commands.length;
 	if (deployAll) {
