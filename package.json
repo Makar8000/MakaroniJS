@@ -1,0 +1,26 @@
+{
+  "name": "makaronijs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node -r dotenv/config .",
+    "deploy-commands": "node -r dotenv/config utils/deploy-commands",
+    "deploy-commands-local": "npm run deploy-commands -- --local",
+    "lint": "eslint . --ext .js",
+    "lint:fix": "npm run lint -- --fix"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.8.0",
+    "dotenv": "^16.0.1",
+    "minimist": "^1.2.8",
+    "pino": "^7.0.0-rc.9",
+    "pino-pretty": "^10.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.23.0"
+  }
+}
