@@ -22,8 +22,7 @@ const deploy = async (deployAll) => {
       { body: commands },
     );
     logger.info(`Successfully ${action}ed ${cmdLen} application (/) command(s) globally.`);
-  }
-  else {
+  } else {
     for (const [guildName, guildId] of Object.entries(config.guilds)) {
       logger.info(`Started ${action}ing ${cmdLen} application (/) command(s) for ${guildName}.`);
       await rest.put(

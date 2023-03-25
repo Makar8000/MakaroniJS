@@ -17,8 +17,7 @@ module.exports = {
 
     try {
       await command.execute(interaction);
-    }
-    catch (error) {
+    } catch (error) {
       await command.error(interaction, error);
     }
   },

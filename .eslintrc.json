@@ -15,9 +15,13 @@
         "after": true
       }
     ],
+    "block-spacing": [
+      "error",
+      "always"
+    ],
     "brace-style": [
       "error",
-      "stroustrup",
+      "1tbs",
       {
         "allowSingleLine": true
       }
@@ -40,7 +44,10 @@
     "handle-callback-err": "off",
     "indent": [
       "error",
-      2
+      2,
+      {
+        "SwitchCase": 1
+      }
     ],
     "keyword-spacing": "error",
     "max-nested-callbacks": [

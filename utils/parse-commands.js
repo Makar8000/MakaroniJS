@@ -20,8 +20,7 @@ const parseCommandFiles = (cmdPath, commands) => {
 module.exports = (cmdPath, commands) => {
   if (typeof commands === 'object' && typeof commands.set === 'function') {
     parseCommandFiles(cmdPath, commands);
-  }
-  else {
+  } else {
     logger.error('Invalid collection provided');
   }
 };

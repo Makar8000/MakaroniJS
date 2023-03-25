@@ -160,7 +160,7 @@ function getBlacklists() {
  */
 function toString() {
   return Object.values(santasConfig.santas).reduce((ret, s) => {
-    ret += `Name: ${s.realName}\nDiscord ID: ${s.discordId}\nAddress: ${s.address}\nNotes: ${s.notes}\n\n`;
+    ret += `Name: ${s.name}\nDiscord ID: ${s.discordId}\nAddress: ${s.address}\nNotes: ${s.notes}\n\n`;
   }, '');
 }
 

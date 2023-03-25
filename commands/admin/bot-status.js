@@ -57,8 +57,7 @@ module.exports = {
         ephemeral: true,
       });
       logger.info(reply);
-    }
-    else if (subcommand === 'status') {
+    } else if (subcommand === 'status') {
       const type = interaction.options.getString('type');
       client.user.setStatus(type);
 
