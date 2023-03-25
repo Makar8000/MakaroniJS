@@ -50,12 +50,24 @@ module.exports = {
 			const name = interaction.options.getString('name');
 			const type = interaction.options.getInteger('type');
 			client.user.setActivity({ name, type });
-			logger.info(`Set ${subcommand} to ${type} "${name}"`);
+
+			const reply = `Set ${subcommand} to "${name}" with type #${type}`;
+			await interaction.reply({
+				content: reply,
+				ephemeral: true,
+			});
+			logger.info(reply);
 		}
 		else if (subcommand === 'status') {
 			const type = interaction.options.getString('type');
 			client.user.setStatus(type);
-			logger.info(`Set ${subcommand} to ${type}`);
+
+			const reply = `Set ${subcommand} to ${type}`;
+			await interaction.reply({
+				content: reply,
+				ephemeral: true,
+			});
+			logger.info(reply);
 		}
 	},
 	async onError(interaction, error) {
