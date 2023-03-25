@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const AsyncLock = require('async-lock');
 const lock = new AsyncLock();
-const config = path.join(__dirname, '../../config.js');
+const config = require(path.join(__dirname, '../../config.js'));
 const santaConfigPath = path.join(__dirname, 'santas.json');
 let santasConfig = loadSantas();
 
@@ -202,7 +202,7 @@ function checkExclusions(santas) {
  * @returns The santa config object.
  */
 function loadSantas() {
-  const santaConf = require(santaConfigPath);
+  const santaConf = JSON.parse(fs.readFileSync(santaConfigPath));
   if (!santaConf.channelId) {
     santaConf.channelId = config.channels.SECRET_SANTA;
   }
