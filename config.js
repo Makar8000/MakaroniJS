@@ -7,6 +7,10 @@ const guilds = {
   CANADALAND: '91676956352868352',
 };
 
+const channels = {
+  SECRET_SANTA: '1036482226336055316',
+};
+
 const users = {
   MARK: '85924030661533696',
   CHRIS: '134209083749171200',
@@ -20,6 +24,7 @@ users.admins = [
 
 module.exports = {
   guilds,
+  channels,
   bots,
   users: {
     ...users,
