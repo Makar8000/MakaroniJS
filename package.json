@@ -7,6 +7,8 @@
     "start": "node -r dotenv/config .",
     "deploy-commands": "node -r dotenv/config utils/deploy-commands",
     "deploy-commands-local": "npm run deploy-commands -- --local",
+    "remove-commands": "npm run deploy-commands -- --remove",
+    "remove-commands-local": "npm run deploy-commands -- --remove --local",
     "lint": "eslint . --ext .js",
     "lint:fix": "npm run lint -- --fix"
   },
