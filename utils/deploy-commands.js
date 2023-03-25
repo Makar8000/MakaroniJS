@@ -1,6 +1,6 @@
 const { REST, Routes, Collection } = require('discord.js');
 const path = require('path');
-const config = require(path.join(__dirname, '../config.json'));
+const config = require(path.join(__dirname, '../config.js'));
 const logger = require(path.join(__dirname, 'logger.js'));
 const parseCommands = require(path.join(__dirname, 'parse-commands.js'));
 const args = require('minimist')(process.argv.slice(2), { boolean: true });
