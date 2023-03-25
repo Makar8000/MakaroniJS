@@ -1,10 +1,20 @@
 const fs = require('fs');
 const path = require('path');
-const { Client, Collection, GatewayIntentBits } = require('discord.js');
+const { Client, Collection, GatewayIntentBits, Partials, ActivityType } = require('discord.js');
 const logger = require(path.join(__dirname, 'utils/logger.js'));
 const parseCommands = require(path.join(__dirname, 'utils/parse-commands.js'));
 
-const client = new Client({ intents: Object.values(GatewayIntentBits).filter(v => v !== GatewayIntentBits.GuildBans) });
+const client = new Client({
+	intents: Object.values(GatewayIntentBits).filter(v => v !== GatewayIntentBits.GuildBans),
+	partials: Object.values(Partials),
+	presence: {
+		status: 'invisible',
+		activities: [{
+			name: 'The Wind Sage',
+			type: ActivityType.Custom,
+		}],
+	},
+});
 
 logger.debug('Creating map of commands');
 client.commands = new Collection();

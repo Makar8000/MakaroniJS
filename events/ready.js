@@ -6,7 +6,6 @@ module.exports = {
 	name: Events.ClientReady,
 	once: true,
 	execute(client) {
-		client.user.setStatus('invisible');
 		logger.info(`${client.user.username} is now online!`);
 	},
 };
