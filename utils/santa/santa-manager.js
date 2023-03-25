@@ -7,7 +7,19 @@ const santaConfigPath = path.join(__dirname, 'santas.json');
 let santasConfig = loadSantas();
 
 /**
- *
+ * Checks if this user is registered with Secret Santa.
+ * @param {String} user
+ *  The Discord ID of the user to check.
+ * @returns
+ *  True if this user is registered.
+ *  False otherwise.
+ */
+function isRegistered(user) {
+  return !!santasConfig.santas[user];
+}
+
+/**
+ * Registers a new user for Secret Santa.
  * @param {Object} santa
  *  The santa object to add.
  * @returns
@@ -22,22 +34,22 @@ function addSanta(santa) {
 }
 
 /**
- *
- * @param {String} santaDiscordId
+ * Unregisters a user for Secret Santa.
+ * @param {String} santa
  *  The Discord ID of the santa to remove.
  * @returns
  *  True if this santa was removed.
  *  False if this santa didn't exist.
  */
-function removeSanta(santaDiscordId) {
-  const ret = santasConfig.santas[santaDiscordId];
-  delete santasConfig.santas[santaDiscordId];
+function removeSanta(santa) {
+  const ret = santasConfig.santas[santa];
+  delete santasConfig.santas[santa];
   saveSantas();
   return !!ret;
 }
 
 /**
- *
+ * Gets the number of registered santas.
  * @returns The number of registered santas.
  */
 function size() {
@@ -45,7 +57,7 @@ function size() {
 }
 
 /**
- *
+ * Sets the receiver for a santa.
  * @param {String} santa
  *  The Discord ID of the santa to set the receiver for.
  * @param {String} receiver
@@ -57,9 +69,9 @@ function setReceiver(santa, receiver) {
 }
 
 /**
- *
+ * Gets the receiver for a santa.
  * @param {String} santa
- *  The Discord ID of the sant to find the receiver for.
+ *  The Discord ID of the santa to find the receiver for.
  * @returns
  *  The Discord ID of the receiver for the specified santa.
  *  Returns undefined if the game is not started OR if this santa doesn't have a receiver.
@@ -73,7 +85,7 @@ function getReceiver(santa) {
 }
 
 /**
- *
+ * Gets the santa for a receiver.
  * @param {String} receiver
  *  The Discord ID of the receiver to find the santa for.
  * @returns
@@ -94,17 +106,17 @@ function getSanta(receiver) {
 }
 
 /**
- *
+ * Gets the Secret Santa session status.
  * @returns
- *  True if this santa session has started.
- *  False if this santa session is NOT started.
+ *  True if this Secret Santa session has started.
+ *  False if this Secret Santa session is NOT started.
  */
 function started() {
   return santasConfig.gameStarted;
 }
 
 /**
- *
+ * Gets the primary channel id being used for this Secret Santa session.
  * @returns
  *  The Discord ID of the channel used for this Secret Santa session.
  */
@@ -145,7 +157,7 @@ function getAll() {
 }
 
 /**
- *
+ * Gets a map of blacklisted pairs.
  * @returns
  *  A map of the blacklisted pairs.
  */
@@ -165,7 +177,7 @@ function toString() {
 }
 
 /**
- *
+ * Checks if the array provided is valid (blacklists are not violated).
  * @param {Array} santas
  *  The array of santa objects.
  * @returns
@@ -198,7 +210,7 @@ function checkExclusions(santas) {
 }
 
 /**
- *
+ * Loads the santa config object from disk.
  * @returns The santa config object.
  */
 function loadSantas() {
@@ -210,7 +222,7 @@ function loadSantas() {
 }
 
 /**
- * Saves the santa config to disk.
+ * Saves the santa config object to disk.
  */
 function saveSantas() {
   lock.acquire('santaLock', () => {
@@ -242,6 +254,7 @@ function shuffle(array) {
 }
 
 module.exports = {
+  isRegistered,
   addSanta,
   removeSanta,
   size,
