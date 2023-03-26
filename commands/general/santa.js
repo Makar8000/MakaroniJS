@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 const path = require('path');
 const SantaManager = require(path.join(__dirname, '../../utils/santa/santa-manager.js'));
+const config = require(path.join(__dirname, '../../config.js'));
 const logger = require(path.join(__dirname, '../../utils/logger.js'));
 
 module.exports = {
@@ -50,13 +51,30 @@ module.exports = {
         .setName('msg')
         .setDescription('The message to send')
         .setRequired(true)),
+    )
+    .addSubcommand(subcommand => subcommand
+      .setName('reload')
+      .setDescription('Reloads the Secret Santa config.'),
     ),
   async execute(interaction) {
     const client = interaction.client;
     const subcommand = interaction.options.getSubcommand();
     logger.debug(`Resolving subcommand: ${subcommand}`);
 
-    if (subcommand.endsWith('register')) {
+    if (subcommand === 'reload') {
+      if (config.users.admins.includes(interaction.user.id)) {
+        SantaManager.reloadSantas();
+        interaction.reply({
+          content: 'Reloaded santas.',
+          ephemeral: true,
+        });
+      } else {
+        interaction.reply({
+          content: 'You do not have permission to run this command.',
+          ephemeral: true,
+        });
+      }
+    } else if (subcommand.endsWith('register')) {
       if (SantaManager.started()) {
         interaction.reply({
           content: `[ERROR] The Secret Santa session has already started. Failed to ${subcommand}.`,
