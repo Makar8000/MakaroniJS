@@ -9,7 +9,7 @@
     "deploy-commands-local": "npm run deploy-commands -- --local",
     "remove-commands": "npm run deploy-commands -- --remove",
     "remove-commands-local": "npm run deploy-commands -- --remove --local",
-    "lint": "eslint . --ext .js",
+    "lint": "eslint . --ext .js --ignore-path .gitignore",
     "lint:fix": "npm run lint -- --fix"
   },
   "keywords": [],
@@ -20,6 +20,7 @@
     "discord.js": "^14.8.0",
     "dotenv": "^16.0.1",
     "minimist": "^1.2.8",
+    "node-fetch": "^2.6.9",
     "pino": "^7.0.0-rc.9",
     "pino-pretty": "^10.0.0"
   },
