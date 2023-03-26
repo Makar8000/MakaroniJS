@@ -9,7 +9,7 @@ module.exports = {
       return;
     }
 
-    const command = interaction.client.commands.get(interaction.commandName);
+    const command = interaction.client.commands.slash.get(interaction.commandName);
     if (!command) {
       logger.error(`No command matching ${interaction.commandName} was found.`);
       return;

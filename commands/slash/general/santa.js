@@ -1,8 +1,8 @@
 const { SlashCommandBuilder } = require('discord.js');
 const path = require('path');
-const SantaManager = require(path.join(__dirname, '../../utils/santa/santa-manager.js'));
-const config = require(path.join(__dirname, '../../config.js'));
-const logger = require(path.join(__dirname, '../../utils/logger.js'));
+const SantaManager = require(path.join(__dirname, '../../../utils/santa/santa-manager.js'));
+const config = require(path.join(__dirname, '../../../config.js'));
+const logger = require(path.join(__dirname, '../../../utils/logger.js'));
 
 module.exports = {
   data: new SlashCommandBuilder()

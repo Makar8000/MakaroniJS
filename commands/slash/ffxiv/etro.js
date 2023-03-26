@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 const path = require('path');
-const etro = require(path.join(__dirname, '../../utils/ffxiv/etro.js'));
-const logger = require(path.join(__dirname, '../../utils/logger.js'));
+const etro = require(path.join(__dirname, '../../../utils/ffxiv/etro.js'));
+const logger = require(path.join(__dirname, '../../../utils/logger.js'));
 
 module.exports = {
   data: new SlashCommandBuilder()

@@ -7,7 +7,7 @@ const args = require('minimist')(process.argv.slice(2), { boolean: true });
 
 const collection = new Collection();
 if (!args.remove) {
-  parseCommands(path.join(__dirname, '../commands'), collection);
+  parseCommands(path.join(__dirname, '../commands/slash'), collection);
 }
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
