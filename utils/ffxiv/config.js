@@ -1,7 +1,7 @@
 const tokenTypes = Object.freeze({
-  WEAPON: Symbol('weapon'),
-  LEFT: Symbol('armor'),
-  RIGHT: Symbol('accessory'),
+  WEAPON: 'Ester',
+  LEFT: 'Twine(s)',
+  RIGHT: 'Dusting(s)',
 });
 
 const defaultEtroSet = {
@@ -36,8 +36,10 @@ module.exports = {
   // XIVAPI
   apiUrl: 'http://xivapi.com',
 
-  // Embed Images
-  thumbnailUrl: 'https://i.imgur.com/PXL66Ix.png',
+  // Embed Config
+  thumbnailUrl: 'https://i.imgur.com/huoF8gA.png',
   iconUrl: 'https://raw.githubusercontent.com/anoyetta/ACT.Hojoring/master/source/ACT.SpecialSpellTimer/ACT.SpecialSpellTimer.Core/resources/icon/Job/',
-
+  embedName: 'Etro Data',
+  embedTitle: 'Raid Pieces',
+  embedColor: 0xB460A6,
 };

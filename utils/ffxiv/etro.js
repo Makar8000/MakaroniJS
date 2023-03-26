@@ -1,7 +1,23 @@
 const path = require('path');
 const fetch = require('node-fetch');
+const { EmbedBuilder } = require('discord.js');
 const config = require(path.join(__dirname, 'config.js'));
 const logger = require(path.join(__dirname, '../logger.js'));
+
+async function getFromUrl(etroUrl) {
+  if (!etroUrl) {
+    return null;
+  }
+
+  const idIndex = etroUrl.lastIndexOf('/');
+  if (idIndex === -1) {
+    return null;
+  }
+
+  const etroId = etroUrl.substr(idIndex + 1);
+  const etroSet = await getFromId(etroId);
+  return etroSet;
+}
 
 async function getFromId(etroId) {
   if (!etroId) {
@@ -55,6 +71,35 @@ async function getFromId(etroId) {
   return set;
 }
 
+function getAsEmbed(etroSet) {
+  const fields = [];
+
+  if (etroSet.leftTokens > 0) {
+    fields.push({ name: config.tokenTypes.LEFT, value: `${etroSet.leftTokens}`, inline: true });
+  }
+  if (etroSet.rightTokens > 0) {
+    fields.push({ name: config.tokenTypes.RIGHT, value: `${etroSet.rightTokens}`, inline: true });
+  }
+  if (etroSet.weaponToken) {
+    fields.push({ name: config.tokenTypes.WEAPON, value: '1', inline: true });
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor(config.embedColor)
+    .setThumbnail(config.thumbnailUrl)
+    .setAuthor({
+      name: config.embedName,
+      iconURL: `${config.iconUrl}${etroSet.job}_Solid.png`,
+      url: `${config.etroUrl}${etroSet.etroId}`,
+    })
+    .setTitle(config.embedTitle)
+    .setDescription(etroSet.raidPieces.reduce((acc, cur, i) => {
+      return `${acc}${cur.charAt(0).toUpperCase()}${cur.substr(1)}${i != etroSet.raidPieces.length - 1 ? ', ' : ''}`;
+    }, ''))
+    .addFields(fields);
+  return embed;
+}
+
 async function getJsonFromUrl(url, options) {
   const resp = await fetch(url, options);
   if (!resp.ok) {
@@ -67,5 +112,7 @@ async function getJsonFromUrl(url, options) {
 }
 
 module.exports = {
+  getFromUrl,
   getFromId,
+  getAsEmbed,
 };
