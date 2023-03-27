@@ -1,12 +1,18 @@
-const fs = require('fs');
 const path = require('path');
 const scheduler = require('node-schedule');
 const moment = require('moment');
+const logger = require(path.join(__dirname, '../logger.js'));
 const AsyncLock = require('async-lock');
+const Keyv = require('keyv');
+const { KeyvFile } = require('keyv-file');
+
 const lock = new AsyncLock();
-const remindersPath = path.join(__dirname, 'reminders.json');
-let reminders = loadReminders();
-let jobs = loadJobs();
+const reminders = new Keyv({
+  namespace: 'reminders',
+  store: new KeyvFile({
+    filename: path.join(__dirname, '../../data/reminders.json'),
+  }),
+});
 
 /**
  * Schedules a new reminder.
@@ -17,79 +23,110 @@ let jobs = loadJobs();
  * @returns
  *  A reference to the scheduled job.
  */
-function scheduleReminder(client, reminder) {
-  reminders.push(reminder);
-
-  const date = moment.unix(reminder.unixTs).toDate();
-  const cb = function(c) {
-    console.log(`Bot ID: ${c.user.id}`);
-  }.bind(null, client);
-  jobs[reminder.id] = scheduler.scheduleJob(date, cb);
-
-  saveReminders();
-  return jobs[reminder.id];
+async function scheduleReminder(client, reminder) {
+  reminders.set(reminder.id, reminder);
+  let keys = await reminders.get('keys');
+  lock.acquire('remindersLock', () => {
+    if (keys) {
+      keys[reminder.id] = true;
+    } else {
+      keys = { [reminder.id]: true };
+    }
+    reminders.set('keys', keys);
+  });
+  return startJob(client, reminder);
 }
 
 /**
- * Loads and schedules jobs for all reminders
+ * Schedule a job for a given reminder
+ * @param {Client} client
+ *  The discord.js client.
+ * @param {Object} reminder
+ *  The reminder data.
+ * @returns
+ *  A reference to the scheduled job.
+ */
+function startJob(client, reminder) {
+  try {
+    logger.info(`Scheduling job ${reminder.id}`);
+    const date = moment.unix(reminder.unixTs).toDate();
+    return scheduler.scheduleJob(date, sendReminder.bind(null, client, reminder));
+  } catch (error) {
+    logger.error(error);
+    return null;
+  }
+}
+
+/**
+ * Sends a reminder once it is scheduled to run.
+ * @param {Client} client
+ *  The discord.js client.
+ * @param {Object} reminder
+ *  The reminder data.
+ * @returns
+ *  True if the reminder was successfully sent. False otherwise.
+ */
+async function sendReminder(client, reminder) {
+  try {
+    logger.info(`[${client?.user?.id}] Firing Reminder: ${reminder?.id}`);
+
+    let mention = reminder.authorId;
+    if (reminder.roleId) {
+      mention = `&${reminder.roleId}`;
+    }
+    const message = `Hey <@${mention}> ${reminder.message}`;
+
+    if (client.channelId) {
+      const channel = await client.channels.fetch(client.channelId, { force: true, allowUnknownGuild: true });
+      if (channel) {
+        await channel.send(message);
+      }
+    } else {
+      await client.users.send(reminder.authorId, message);
+    }
+
+    const keys = await reminders.get('keys');
+    delete keys[reminder.id];
+    await reminders.set('keys', keys);
+    await reminders.delete(reminder.id);
+
+    return true;
+  } catch (error) {
+    logger.error(error);
+    return false;
+  }
+}
+
+/**
+ * Loads and schedules jobs for all reminders.
+ * Ran at startup.
  * @param {Client} client
  *  The discord.js client.
  * @returns
  *  The jobs that were scheduled.
  */
-function loadJobs(client) {
-  try {
-    const ret = {};
-    for (const rem of reminders) {
-      const date = moment.unix(rem.unixTs).toDate();
-      const cb = function(c) {
-        console.log(`Bot ID: ${c.user.id}`);
-      }.bind(null, client);
-      ret[rem.id] = scheduler.scheduleJob(date, cb);
+async function initJobs(client) {
+  const keys = await reminders.get('keys');
+  if (!keys) {
+    return;
+  }
+
+  const delay = { amount: 5, unit: 'seconds' };
+  const curTime = moment().add(delay.amount, delay.unit).unix();
+  for (const key of Object.keys(keys)) {
+    const rem = await reminders.get(key);
+    if (rem.unixTs < curTime) {
+      rem.unixTs = curTime;
+      logger.warn(`Reminder ${rem.id} is in the past. Firing in ${delay.amount} ${delay.unit}`);
     }
-    return ret;
-  } catch {
-    return {};
+
+    if (!startJob(client, rem)) {
+      logger.error(`Failed to schedule reminder ID ${rem.id}`);
+    }
   }
-}
-
-/**
- * Loads the reminders from disk.
- * @returns The reminders.
- */
-function loadReminders() {
-  try {
-    const rems = JSON.parse(fs.readFileSync(remindersPath));
-    return rems;
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Saves the reminders to disk.
- */
-function saveReminders() {
-  lock.acquire('remindersLock', () => {
-    fs.writeFileSync(remindersPath, JSON.stringify(reminders, null, 2));
-  });
-}
-
-/**
- * Reloads the reminders from disk.
- * @param {Client} client
- *  The discord.js client.
- */
-function reloadReminders(client) {
-  lock.acquire('remindersLock', () => {
-    reminders = loadReminders();
-    scheduler.gracefulShutdown().then(() => {
-      jobs = loadJobs(client);
-    });
-  });
 }
 
 module.exports = {
   scheduleReminder,
-  reloadReminders,
+  initJobs,
 };

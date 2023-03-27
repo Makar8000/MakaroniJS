@@ -3,6 +3,7 @@ const path = require('path');
 const SantaManager = require(path.join(__dirname, '../../../utils/santa/santa-manager.js'));
 const config = require(path.join(__dirname, '../../../config.js'));
 const logger = require(path.join(__dirname, '../../../utils/logger.js'));
+SantaManager.initSantas();
 
 module.exports = {
   data: new SlashCommandBuilder()

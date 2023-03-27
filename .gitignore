@@ -1,5 +1,4 @@
 node_modules
 .env
 test/
-utils/santa/old/
-utils/reminders/reminders.json
+data/

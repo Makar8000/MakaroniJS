@@ -1,10 +1,16 @@
 const fs = require('fs');
 const path = require('path');
-const AsyncLock = require('async-lock');
-const lock = new AsyncLock();
+const Keyv = require('keyv');
+const { KeyvFile } = require('keyv-file');
 const config = require(path.join(__dirname, '../../config.js'));
-const santaConfigPath = path.join(__dirname, 'santas.json');
-let santasConfig = loadSantas();
+
+const santasDb = new Keyv({
+  namespace: 'secretsanta',
+  store: new KeyvFile({
+    filename: path.join(__dirname, '../../data/santas.json'),
+  }),
+});
+const santasConfigKey = 'santasConfig';
 
 /**
  * Checks if this user is registered with Secret Santa.
@@ -14,7 +20,8 @@ let santasConfig = loadSantas();
  *  True if this user is registered.
  *  False otherwise.
  */
-function isRegistered(user) {
+async function isRegistered(user) {
+  const santasConfig = await santasDb.get(santasConfigKey);
   return !!santasConfig.santas[user];
 }
 
@@ -26,10 +33,11 @@ function isRegistered(user) {
  *  True if this santa is new.
  *  False if modifying an existing santa.
  */
-function addSanta(santa) {
+async function addSanta(santa) {
+  const santasConfig = await santasDb.get(santasConfigKey);
   const ret = santasConfig.santas[santa.discordId];
   santasConfig.santas[santa.discordId] = santa;
-  saveSantas();
+  await santasDb.set(santasConfigKey, santasConfig);
   return !ret;
 }
 
@@ -41,10 +49,11 @@ function addSanta(santa) {
  *  True if this santa was removed.
  *  False if this santa didn't exist.
  */
-function removeSanta(santa) {
+async function removeSanta(santa) {
+  const santasConfig = await santasDb.get(santasConfigKey);
   const ret = santasConfig.santas[santa];
   delete santasConfig.santas[santa];
-  saveSantas();
+  await santasDb.set(santasConfigKey, santasConfig);
   return !!ret;
 }
 
@@ -52,8 +61,12 @@ function removeSanta(santa) {
  * Gets the number of registered santas.
  * @returns The number of registered santas.
  */
-function size() {
-  return Object.keys(santasConfig.santas).length;
+async function size() {
+  const santasConfig = await santasDb.get(santasConfigKey);
+  if (!santasConfig?.santas) {
+    return 0;
+  }
+  return Object.keys(santasConfig?.santas).length;
 }
 
 /**
@@ -63,9 +76,10 @@ function size() {
  * @param {String} receiver
  *  The Discord ID of the receiver.
  */
-function setReceiver(santa, receiver) {
+async function setReceiver(santa, receiver) {
+  const santasConfig = await santasDb.get(santasConfigKey);
   santasConfig.selectedPairs[santa] = receiver;
-  saveSantas();
+  await santasDb.set(santasConfigKey, santasConfig);
 }
 
 /**
@@ -76,12 +90,12 @@ function setReceiver(santa, receiver) {
  *  The Discord ID of the receiver for the specified santa.
  *  Returns undefined if the game is not started OR if this santa doesn't have a receiver.
  */
-function getReceiver(santa) {
-  if (!santasConfig.gameStarted) {
+async function getReceiver(santa) {
+  const santasConfig = await santasDb.get(santasConfigKey);
+  if (!santasConfig?.gameStarted) {
     return undefined;
   }
-
-  return santasConfig.selectedPairs[santa];
+  return santasConfig?.selectedPairs[santa];
 }
 
 /**
@@ -91,17 +105,17 @@ function getReceiver(santa) {
  * @returns
  *  The Discord ID of the santa for this receiver.
  */
-function getSanta(receiver) {
-  if (!santasConfig.gameStarted) {
+async function getSanta(receiver) {
+  const santasConfig = await santasDb.get(santasConfigKey);
+  if (!santasConfig?.gameStarted) {
     return undefined;
   }
 
-  for (const [santa, rec] of Object.entries(santasConfig.selectedPairs)) {
+  for (const [santa, rec] of Object.entries(santasConfig?.selectedPairs)) {
     if (rec === receiver) {
       return santa;
     }
   }
-
   return undefined;
 }
 
@@ -111,8 +125,9 @@ function getSanta(receiver) {
  *  True if this Secret Santa session has started.
  *  False if this Secret Santa session is NOT started.
  */
-function started() {
-  return santasConfig.gameStarted;
+async function started() {
+  const santasConfig = await santasDb.get(santasConfigKey);
+  return santasConfig?.gameStarted;
 }
 
 /**
@@ -120,26 +135,29 @@ function started() {
  * @returns
  *  The Discord ID of the channel used for this Secret Santa session.
  */
-function getChannelId() {
-  return santasConfig.channelId;
+async function getChannelId() {
+  const santasConfig = await santasDb.get(santasConfigKey);
+  return santasConfig?.channelId;
 }
 
 /**
  * Sets the state of the Secret Santa session as started.
  */
-function start() {
+async function start() {
+  const santasConfig = await santasDb.get(santasConfigKey);
   santasConfig.gameStarted = true;
-  saveSantas();
+  await santasDb.set(santasConfigKey, santasConfig);
 }
 
 /**
  * Fully resets the state of the Secret Santa session.
  */
-function reset() {
+async function reset() {
+  const santasConfig = await santasDb.get(santasConfigKey);
   santasConfig.santas = {};
   santasConfig.selectedPairs = {};
   santasConfig.gameStarted = false;
-  saveSantas();
+  await santasDb.set(santasConfigKey, santasConfig);
 }
 
 /**
@@ -147,10 +165,11 @@ function reset() {
  * @returns
  *  An array of santa objects currently registered.
  */
-function getAll() {
+async function getAll() {
+  const santasConfig = await santasDb.get(santasConfigKey);
   const ret = Object.values(santasConfig.santas);
   shuffle(ret);
-  while (!checkExclusions(ret)) {
+  while (!(await checkExclusions(ret))) {
     shuffle(ret);
   }
   return ret;
@@ -161,8 +180,9 @@ function getAll() {
  * @returns
  *  A map of the blacklisted pairs.
  */
-function getBlacklists() {
-  return santasConfig.blacklistedPairs;
+async function getBlacklists() {
+  const santasConfig = await santasDb.get(santasConfigKey);
+  return santasConfig?.blacklistedPairs;
 }
 
 /**
@@ -170,7 +190,8 @@ function getBlacklists() {
  * @returns
  *  A string representation of all the santas currently registered.
  */
-function toString() {
+async function toString() {
+  const santasConfig = await santasDb.get(santasConfigKey);
   return Object.values(santasConfig.santas).reduce((ret, s) => {
     ret += `Name: ${s.name}\nDiscord ID: ${s.discordId}\nAddress: ${s.address}\nNotes: ${s.notes}\n\n`;
   }, '');
@@ -184,17 +205,18 @@ function toString() {
  *  True if this array is sorted in a way that respects blacklists.
  *  False if this array sorting conflicts with blacklists.
  */
-function checkExclusions(santas) {
+async function checkExclusions(santas) {
   if (santas.length < 2) {
     return true;
   }
 
+  const santasConfig = await santasDb.get(santasConfigKey);
   for (let i = 0; i < santas.length; i++) {
     const j = i === santas.length - 1 ? 0 : i + 1;
     const santaId = santas[i].discordId;
     const receiverId = santas[j].discordId;
 
-    const blkListedReceivers = santasConfig.blacklistedPairs.get(santaId);
+    const blkListedReceivers = santasConfig.blacklistedPairs[santaId];
     if (!blkListedReceivers || blkListedReceivers?.length === 0) {
       continue;
     }
@@ -209,35 +231,17 @@ function checkExclusions(santas) {
   return true;
 }
 
-/**
- * Loads the santa config object from disk.
- * @returns The santa config object.
- */
-function loadSantas() {
-  const santaConf = JSON.parse(fs.readFileSync(santaConfigPath));
-  if (!santaConf.channelId) {
-    santaConf.channelId = config.channels.SECRET_SANTA;
+async function initSantas() {
+  if (!(await santasDb.get(santasConfigKey))) {
+    const santaConfigPath = path.join(__dirname, 'santas-default.json');
+    const santaConf = JSON.parse(fs.readFileSync(santaConfigPath));
+    if (!santaConf.channelId) {
+      santaConf.channelId = config.channels.SECRET_SANTA;
+    }
+    await santasDb.set(santasConfigKey, santaConf);
   }
-  return santaConf;
 }
 
-/**
- * Saves the santa config object to disk.
- */
-function saveSantas() {
-  lock.acquire('santaLock', () => {
-    fs.writeFileSync(santaConfigPath, JSON.stringify(santasConfig, null, 2));
-  });
-}
-
-/**
- * Reloads the santa config object from disk.
- */
-function reloadSantas() {
-  lock.acquire('santaLock', () => {
-    santasConfig = loadSantas();
-  });
-}
 
 /**
  * Shuffles an array in-place.
@@ -268,5 +272,5 @@ module.exports = {
   getAll,
   getBlacklists,
   toString,
-  reloadSantas,
+  initSantas,
 };

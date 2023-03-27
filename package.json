@@ -19,6 +19,8 @@
     "async-lock": "^1.4.0",
     "discord.js": "^14.8.0",
     "dotenv": "^16.0.1",
+    "keyv": "^4.5.2",
+    "keyv-file": "^0.2.0",
     "minimist": "^1.2.8",
     "moment": "^2.29.4",
     "moment-timezone": "^0.5.42",
