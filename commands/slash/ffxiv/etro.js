@@ -13,15 +13,16 @@ module.exports = {
       .setRequired(true),
     ),
   async execute(interaction) {
+    await interaction.deferReply();
     const etroUrl = interaction.options.getString('etro-link');
-    const etroSet = etro.getFromUrl(etroUrl);
+    const etroSet = await etro.getFromUrl(etroUrl);
 
     if (etroSet) {
-      interaction.reply({
+      interaction.followUp({
         embeds: [etro.getAsEmbed(etroSet)],
       });
     } else {
-      interaction.reply({
+      interaction.followUp({
         content: 'Network error or invalid etro url provided.',
         ephemeral: true,
       });
