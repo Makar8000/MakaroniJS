@@ -7,21 +7,21 @@ SantaManager.initSantas();
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('ss')
-    .setDescription('Secret Santa commands')
+    .setDescription('Secret Santa commands.')
     .addSubcommand(subcommand => subcommand
       .setName('register')
       .setDescription('Register for Secret Santa or update your registration information.')
       .addStringOption(option => option
         .setName('name')
-        .setDescription('The name that you want to appear on your package(s)')
+        .setDescription('The name that you want to appear on your package(s).')
         .setRequired(true))
       .addStringOption(option => option
         .setName('address')
-        .setDescription('The address your santa needs to send the package(s) to')
+        .setDescription('The address your santa needs to send the package(s) to.')
         .setRequired(true))
       .addStringOption(option => option
         .setName('notes')
-        .setDescription('A message for your Secret Santa (what not to buy & other notes)')
+        .setDescription('A message for your Secret Santa (what not to buy & other notes).')
         .setRequired(true)),
     )
     .addSubcommand(subcommand => subcommand
@@ -33,7 +33,7 @@ module.exports = {
       .setDescription('Send a message to the Secret Santa channel anonymously.')
       .addStringOption(option => option
         .setName('msg')
-        .setDescription('The message to send')
+        .setDescription('The message to send.')
         .setRequired(true)),
     )
     .addSubcommand(subcommand => subcommand
@@ -41,7 +41,7 @@ module.exports = {
       .setDescription('Send a message to your Secret Santa.')
       .addStringOption(option => option
         .setName('msg')
-        .setDescription('The message to send')
+        .setDescription('The message to send.')
         .setRequired(true)),
     )
     .addSubcommand(subcommand => subcommand
@@ -49,7 +49,7 @@ module.exports = {
       .setDescription('Send a message to your receiver anonymously.')
       .addStringOption(option => option
         .setName('msg')
-        .setDescription('The message to send')
+        .setDescription('The message to send.')
         .setRequired(true)),
     ),
   async execute(interaction) {

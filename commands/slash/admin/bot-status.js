@@ -11,11 +11,11 @@ module.exports = {
       .setDescription('The activity of the bot.')
       .addStringOption(option => option
         .setName('name')
-        .setDescription('The activity name')
+        .setDescription('The activity name.')
         .setRequired(true))
       .addIntegerOption(option => option
         .setName('type')
-        .setDescription('The activity type')
+        .setDescription('The activity type.')
         .addChoices(
           { name: 'Custom', value: ActivityType.Custom },
           { name: 'Playing', value: ActivityType.Playing },
@@ -31,7 +31,7 @@ module.exports = {
       .setDescription('The online status of the bot.')
       .addStringOption(option => option
         .setName('type')
-        .setDescription('The online status to change to')
+        .setDescription('The online status to change to.')
         .addChoices(
           { name: 'Online', value: 'online' },
           { name: 'Idle', value: 'idle' },

@@ -9,7 +9,7 @@ module.exports = {
     .setDescription('Parse currency required to obtain an etro set.')
     .addStringOption(option => option
       .setName('etro-link')
-      .setDescription('The link to the etro set')
+      .setDescription('The link to the etro set.')
       .setRequired(true),
     ),
   async execute(interaction) {
