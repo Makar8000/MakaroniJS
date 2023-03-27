@@ -1,7 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const path = require('path');
 const SantaManager = require(path.join(__dirname, '../../../utils/santa/santa-manager.js'));
-const config = require(path.join(__dirname, '../../../config.js'));
 const logger = require(path.join(__dirname, '../../../utils/logger.js'));
 SantaManager.initSantas();
 
@@ -52,31 +51,14 @@ module.exports = {
         .setName('msg')
         .setDescription('The message to send')
         .setRequired(true)),
-    )
-    .addSubcommand(subcommand => subcommand
-      .setName('reload')
-      .setDescription('Reloads the Secret Santa config.'),
     ),
   async execute(interaction) {
     const client = interaction.client;
     const subcommand = interaction.options.getSubcommand();
     logger.debug(`Resolving subcommand: ${subcommand}`);
 
-    if (subcommand === 'reload') {
-      if (config.users.admins.includes(interaction.user.id)) {
-        SantaManager.reloadSantas();
-        interaction.reply({
-          content: 'Reloaded santas.',
-          ephemeral: true,
-        });
-      } else {
-        interaction.reply({
-          content: 'You do not have permission to run this command.',
-          ephemeral: true,
-        });
-      }
-    } else if (subcommand.endsWith('register')) {
-      if (SantaManager.started()) {
+    if (subcommand.endsWith('register')) {
+      if (await SantaManager.started()) {
         interaction.reply({
           content: `[ERROR] The Secret Santa session has already started. Failed to ${subcommand}.`,
           ephemeral: true,
@@ -88,7 +70,7 @@ module.exports = {
         const name = interaction.options.getString('name');
         const address = interaction.options.getString('address');
         const notes = interaction.options.getString('notes');
-        const added = SantaManager.addSanta({
+        const added = await SantaManager.addSanta({
           discordId: interaction.user.id,
           name, address, notes,
         });
@@ -104,7 +86,7 @@ module.exports = {
           });
         }
       } else if (subcommand === 'unregister') {
-        const removed = SantaManager.removeSanta(interaction.user.id);
+        const removed = await SantaManager.removeSanta(interaction.user.id);
         if (removed) {
           interaction.reply({
             content: 'Successfully unregistered.',
@@ -118,7 +100,7 @@ module.exports = {
         }
       }
     } else {
-      if (!SantaManager.isRegistered(interaction.user.id)) {
+      if (!(await SantaManager.isRegistered(interaction.user.id))) {
         interaction.reply({
           content: '[ERROR] You are not registered.',
           ephemeral: true,
@@ -126,7 +108,7 @@ module.exports = {
         return;
       }
 
-      if (!SantaManager.started()) {
+      if (!(await SantaManager.started())) {
         interaction.reply({
           content: '[ERROR] The Secret Santa session has not started yet. Unable to send message.',
           ephemeral: true,
@@ -137,13 +119,13 @@ module.exports = {
       const msg = interaction.options.getString('msg');
       if (subcommand === 'channel') {
         logger.debug('Sending message to channel...');
-        const channel = await client.channels.fetch(SantaManager.getChannelId());
+        const channel = await client.channels.fetch(await SantaManager.getChannelId());
         channel.send({
           content: msg,
         });
       } else if (subcommand === 'santa') {
         logger.debug('Sending message to santa...');
-        const channel = await client.users.fetch(SantaManager.getSanta(interaction.user.id));
+        const channel = await client.users.fetch(await SantaManager.getSanta(interaction.user.id));
         channel.send({
           content: msg,
         }).catch(error => {
@@ -151,7 +133,7 @@ module.exports = {
         });
       } else if (subcommand === 'receiver') {
         logger.debug('Sending message to receiver...');
-        const channel = await client.users.fetch(SantaManager.getReceiver(interaction.user.id));
+        const channel = await client.users.fetch(await SantaManager.getReceiver(interaction.user.id));
         channel.send({
           content: msg,
         }).catch(error => {
