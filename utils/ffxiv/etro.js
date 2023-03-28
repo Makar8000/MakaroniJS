@@ -31,7 +31,17 @@ async function getFromId(etroId) {
     if (!json) {
       return null;
     }
-    set.job = json.jobAbbrev;
+
+    // Parse total params
+    if (json.totalParams?.length > 0) {
+      json.totalParams = json.totalParams.map(p => {
+        p.id = Number.parseInt(p.id);
+        if (p.name.startsWith('Weapon')) {
+          p.name = 'WD';
+        }
+        return p;
+      });
+    }
 
     // Get item names from XIVAPI
     const itemIds = Object.keys(config.augmentTokens).map(slot => json[slot]).join(',');
@@ -43,6 +53,21 @@ async function getFromId(etroId) {
       return p;
     }, {});
     if (!itemNameMap) { return null; }
+
+    // Add other etro info
+    set.name = json.name;
+    set.job = json.jobAbbrev;
+    set.params = json.totalParams?.filter(p => config.etroParams.statOrder.includes(p.id))
+      .sort((a, b) => config.etroParams.statOrder.indexOf(a.id) - config.etroParams.statOrder.indexOf(b.id));
+    set.gcd = json.totalParams?.filter(p => p.name.startsWith(config.etroParams.gcd))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    set.dmg = json.totalParams?.find(p => p.name === config.etroParams.dmg)?.value;
+    if (json.food && typeof json.food === 'number') {
+      const foodJson = await getJsonFromUrl(`${config.etroFoodApiUrl}${json.food}`);
+      if (foodJson) {
+        set.food = foodJson.name;
+      }
+    }
 
     // Map out upgrade tokens vs raid pieces
     for (const slot of Object.keys(config.augmentTokens)) {
@@ -84,15 +109,32 @@ function getAsEmbed(etroSet) {
     fields.push({ name: config.tokenTypes.WEAPON, value: '1', inline: true });
   }
 
+  if (etroSet.dmg) {
+    fields.push({ name: config.embedOptions.damageName, value: `${etroSet.dmg}`, inline: false });
+  }
+  if (etroSet.params?.length > 0) {
+    etroSet.params.forEach(p => {
+      fields.push({ name: p.name, value: `${p.value}`, inline: true });
+    });
+  }
+  if (etroSet.gcd?.length > 0) {
+    etroSet.gcd.forEach(p => {
+      fields.push({ name: p.name, value: `${p.value}${p.units ? p.units : ''}`, inline: true });
+    });
+  }
+  if (etroSet.food) {
+    fields.push({ name: config.embedOptions.foodName, value: `${etroSet.food}`, inline: false });
+  }
+
   const embed = new EmbedBuilder()
-    .setColor(config.embedColor)
-    .setThumbnail(config.thumbnailUrl)
+    .setColor(config.embedOptions.color)
+    .setThumbnail(config.embedOptions.thumbnailUrl)
     .setAuthor({
-      name: config.embedName,
-      iconURL: `${config.iconUrl}${etroSet.job}_Solid.png`,
+      name: etroSet.name ? etroSet.name : config.embedOptions.name,
+      iconURL: `${config.embedOptions.iconUrl}${etroSet.job}_Solid.png`,
       url: `${config.etroUrl}${etroSet.etroId}`,
     })
-    .setTitle(config.embedTitle)
+    .setTitle(config.embedOptions.title)
     .setDescription(etroSet.raidPieces.reduce((acc, cur, i) => {
       return `${acc}${cur.charAt(0).toUpperCase()}${cur.substr(1)}${i != etroSet.raidPieces.length - 1 ? ', ' : ''}`;
     }, ''))
