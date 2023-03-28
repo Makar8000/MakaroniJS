@@ -2,7 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const { Client, Collection, GatewayIntentBits, Partials, ActivityType } = require('discord.js');
 const logger = require(path.join(__dirname, 'utils/logger.js'));
-const config = require(path.join(__dirname, 'config.js'));
 const parseCommands = require(path.join(__dirname, 'utils/parse-commands.js'));
 
 const client = new Client({
@@ -11,8 +10,8 @@ const client = new Client({
   presence: {
     status: 'online',
     activities: [{
-      name: `The Sage of ${process.env.DISCORD_APP_ID === config.bots.MEDLIONI ? 'Earth' : 'Wind'}`,
-      type: ActivityType.Custom,
+      name: 'music',
+      type: ActivityType.Listening,
     }],
   },
 });

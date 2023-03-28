@@ -7,7 +7,7 @@ module.exports = {
   name: Events.ClientReady,
   once: true,
   execute(client) {
-    logger.info(`${client.user.username} is now online!`);
+    logger.info(`${client.user.username} is now ${client.user.presence.status}!`);
     ReminderManager.initJobs(client);
   },
 };

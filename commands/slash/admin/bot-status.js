@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ActivityType } = require('discord.js');
 const path = require('path');
+const config = require(path.join(__dirname, '../../../config.js'));
 const logger = require(path.join(__dirname, '../../../utils/logger.js'));
 
 module.exports = {
@@ -17,12 +18,13 @@ module.exports = {
         .setName('type')
         .setDescription('The activity type.')
         .addChoices(
-          { name: 'Custom', value: ActivityType.Custom },
           { name: 'Playing', value: ActivityType.Playing },
-          { name: 'Listening', value: ActivityType.Listening },
-          { name: 'Competing', value: ActivityType.Competing },
           { name: 'Watching', value: ActivityType.Watching },
-          { name: 'Streaming', value: ActivityType.Streaming },
+          { name: 'Listening to', value: ActivityType.Listening },
+          { name: 'Competing in', value: ActivityType.Competing },
+          // Not allowed for bots
+          // { name: 'Streaming', value: ActivityType.Streaming },
+          // { name: 'Custom', value: ActivityType.Custom },
         )
         .setRequired(true)),
     )
@@ -46,7 +48,12 @@ module.exports = {
     const subcommand = interaction.options.getSubcommand();
     logger.debug(`Resolving subcommand: ${subcommand}`);
 
-    if (subcommand === 'activity') {
+    if (!config.users.admins.includes(interaction.user.id)) {
+      interaction.reply({
+        content: 'You do not have permission to run this command.',
+        ephemeral: true,
+      });
+    } else if (subcommand === 'activity') {
       const name = interaction.options.getString('name');
       const type = interaction.options.getInteger('type');
       client.user.setActivity({ name, type });
