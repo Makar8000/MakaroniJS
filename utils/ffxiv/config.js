@@ -40,8 +40,8 @@ const embedOptions = {
   color: 0xB460A6,
   name: 'Etro Data',
   title: 'Non-Augmented Pieces',
-  thumbnailUrl: 'https://i.imgur.com/huoF8gA.png',
-  iconUrl: 'https://raw.githubusercontent.com/anoyetta/ACT.Hojoring/master/source/ACT.SpecialSpellTimer/ACT.SpecialSpellTimer.Core/resources/icon/Job/',
+  iconUrl: 'https://etro.gg/favicon.png',
+  thumbnailUrl: 'https://raw.githubusercontent.com/anoyetta/ACT.Hojoring/master/source/ACT.SpecialSpellTimer/ACT.SpecialSpellTimer.Core/resources/icon/Job/',
   damageName: 'Damage per 100 Potency',
   foodName: 'Food',
 };

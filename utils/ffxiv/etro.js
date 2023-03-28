@@ -128,10 +128,10 @@ function getAsEmbed(etroSet) {
 
   const embed = new EmbedBuilder()
     .setColor(config.embedOptions.color)
-    .setThumbnail(config.embedOptions.thumbnailUrl)
+    .setThumbnail(`${config.embedOptions.thumbnailUrl}${etroSet.job}_Solid.png`)
     .setAuthor({
       name: etroSet.name ? etroSet.name : config.embedOptions.name,
-      iconURL: `${config.embedOptions.iconUrl}${etroSet.job}_Solid.png`,
+      iconURL: config.embedOptions.iconUrl,
       url: `${config.etroUrl}${etroSet.etroId}`,
     })
     .setTitle(config.embedOptions.title)
