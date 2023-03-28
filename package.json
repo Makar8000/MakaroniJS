@@ -8,6 +8,7 @@
     "prod": "pm2 start index.js --name \"makaroni\" --log data/Makaroni.log",
     "stop": "pm2 stop makaroni",
     "monitor": "pm2 logs makaroni",
+    "restart": "git pull && npm install && pm2 restart makaroni",
     "deploy-commands": "node -r dotenv/config utils/deploy-commands",
     "deploy-commands-local": "npm run deploy-commands -- --local",
     "remove-commands": "npm run deploy-commands -- --remove",

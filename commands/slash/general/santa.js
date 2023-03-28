@@ -9,6 +9,30 @@ module.exports = {
     .setName('ss')
     .setDescription('Secret Santa commands.')
     .addSubcommand(subcommand => subcommand
+      .setName('santa')
+      .setDescription('Send a message to your Secret Santa.')
+      .addStringOption(option => option
+        .setName('msg')
+        .setDescription('The message to send.')
+        .setRequired(true)),
+    )
+    .addSubcommand(subcommand => subcommand
+      .setName('receiver')
+      .setDescription('Send a message to your receiver anonymously.')
+      .addStringOption(option => option
+        .setName('msg')
+        .setDescription('The message to send.')
+        .setRequired(true)),
+    )
+    .addSubcommand(subcommand => subcommand
+      .setName('channel')
+      .setDescription('Send a message to the Secret Santa channel anonymously.')
+      .addStringOption(option => option
+        .setName('msg')
+        .setDescription('The message to send.')
+        .setRequired(true)),
+    )
+    .addSubcommand(subcommand => subcommand
       .setName('register')
       .setDescription('Register for Secret Santa or update your registration information.')
       .addStringOption(option => option
@@ -27,30 +51,6 @@ module.exports = {
     .addSubcommand(subcommand => subcommand
       .setName('unregister')
       .setDescription('Unregister for Secret Santa.'),
-    )
-    .addSubcommand(subcommand => subcommand
-      .setName('channel')
-      .setDescription('Send a message to the Secret Santa channel anonymously.')
-      .addStringOption(option => option
-        .setName('msg')
-        .setDescription('The message to send.')
-        .setRequired(true)),
-    )
-    .addSubcommand(subcommand => subcommand
-      .setName('santa')
-      .setDescription('Send a message to your Secret Santa.')
-      .addStringOption(option => option
-        .setName('msg')
-        .setDescription('The message to send.')
-        .setRequired(true)),
-    )
-    .addSubcommand(subcommand => subcommand
-      .setName('receiver')
-      .setDescription('Send a message to your receiver anonymously.')
-      .addStringOption(option => option
-        .setName('msg')
-        .setDescription('The message to send.')
-        .setRequired(true)),
     ),
   async execute(interaction) {
     const client = interaction.client;
