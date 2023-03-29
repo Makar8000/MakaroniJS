@@ -5,6 +5,8 @@ const logger = require(path.join(__dirname, '../logger.js'));
 const AsyncLock = require('async-lock');
 const Keyv = require('keyv');
 const { KeyvFile } = require('keyv-file');
+const { Collection } = require('discord.js');
+const jobs = new Collection();
 
 const lock = new AsyncLock();
 const reminders = new Keyv({
@@ -24,6 +26,10 @@ const reminders = new Keyv({
  *  A reference to the scheduled job.
  */
 async function scheduleReminder(client, reminder) {
+  if (!reminder?.id || !client) {
+    return null;
+  }
+
   reminders.set(reminder.id, reminder);
   let keys = await reminders.get('keys');
   lock.acquire('remindersLock', () => {
@@ -35,6 +41,49 @@ async function scheduleReminder(client, reminder) {
     reminders.set('keys', keys);
   });
   return startJob(client, reminder);
+}
+
+/**
+ * Gets a list of reminders for a user
+ * @param {String} userId
+ *  The userId to search reminders for.
+ * @returns
+ *  An array of reminders.
+ */
+async function getReminders(userId) {
+  const ret = [];
+  const keys = await reminders.get('keys');
+  if (keys && typeof keys === 'object') {
+    for (const key of Object.keys(keys)) {
+      const rem = await reminders.get(key);
+      if (rem.authorId === userId) {
+        ret.push(rem);
+      }
+    }
+  }
+  return ret;
+}
+
+/**
+ * Cancels a scheduled reminder.
+ * @param {String} reminderId
+ *  The reminder ID to delete.
+ * @param {String} userId
+ *  The user ID requesting the delete.
+ * @returns
+ *  True if cancelation was successful. False otherwise.
+ */
+async function cancelReminder(reminderId, userId) {
+  const reminder = await reminders.get(reminderId);
+  if (jobs.has(reminder.id) && reminder.authorId === userId) {
+    jobs.get(reminder.id).cancel();
+    const keys = await reminders.get('keys');
+    delete keys[reminder.id];
+    await reminders.set('keys', keys);
+    await reminders.delete(reminder.id);
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -50,7 +99,11 @@ function startJob(client, reminder) {
   try {
     logger.info(`Scheduling job ${reminder.id}`);
     const date = moment.unix(reminder.unixTs).toDate();
-    return scheduler.scheduleJob(date, sendReminder.bind(null, client, reminder));
+    const job = scheduler.scheduleJob(date, sendReminder.bind(null, client, reminder));
+    if (job) {
+      jobs.set(reminder.id, job);
+    }
+    return job;
   } catch (error) {
     logger.error(error);
     return null;
@@ -70,11 +123,8 @@ async function sendReminder(client, reminder) {
   try {
     logger.info(`[${client?.user?.id}] Firing Reminder: ${reminder?.id}`);
 
-    let mention = reminder.authorId;
-    if (reminder.roleId) {
-      mention = `&${reminder.roleId}`;
-    }
-    const message = `Hey <@${mention}> ${reminder.message}`;
+    const mention = reminder.mention ?? `<@${reminder.authorId}>`;
+    const message = `Hey ${mention}, ${reminder.message}`;
 
     if (client.channelId) {
       const channel = await client.channels.fetch(client.channelId, { force: true, allowUnknownGuild: true });
@@ -128,5 +178,7 @@ async function initJobs(client) {
 
 module.exports = {
   scheduleReminder,
+  getReminders,
+  cancelReminder,
   initJobs,
 };
