@@ -161,29 +161,34 @@ module.exports = {
         return;
       }
 
+      interaction.deferReply({ ephemeral: true });
       const msg = interaction.options.getString('msg');
-      if (subcommand === 'channel') {
-        logger.debug('Sending message to channel...');
-        const channel = await client.channels.fetch(await SantaManager.getChannelId());
-        channel.send({
-          content: msg,
+      try {
+        if (subcommand === 'channel') {
+          logger.debug('Sending message to channel...');
+          const channel = await client.channels.fetch(await SantaManager.getChannelId());
+          await channel.send({
+            content: msg,
+          });
+        } else if (subcommand === 'santa') {
+          logger.debug('Sending message to santa...');
+          const channel = await client.users.fetch(await SantaManager.getSanta(interaction.user.id));
+          await channel.send({
+            content: msg,
+          });
+        } else if (subcommand === 'receiver') {
+          logger.debug('Sending message to receiver...');
+          const channel = await client.users.fetch(await SantaManager.getReceiver(interaction.user.id));
+          await channel.send({
+            content: msg,
+          });
+        }
+        interaction.followUp({
+          content: `Successfully sent to ${subcommand}: ${msg}`,
+          ephemeral: true,
         });
-      } else if (subcommand === 'santa') {
-        logger.debug('Sending message to santa...');
-        const channel = await client.users.fetch(await SantaManager.getSanta(interaction.user.id));
-        channel.send({
-          content: msg,
-        }).catch(error => {
-          logger.error(error);
-        });
-      } else if (subcommand === 'receiver') {
-        logger.debug('Sending message to receiver...');
-        const channel = await client.users.fetch(await SantaManager.getReceiver(interaction.user.id));
-        channel.send({
-          content: msg,
-        }).catch(error => {
-          logger.error(error);
-        });
+      } catch (error) {
+        logger.error(error);
       }
     }
   },

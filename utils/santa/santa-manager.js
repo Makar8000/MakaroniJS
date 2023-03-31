@@ -159,7 +159,7 @@ async function start(client) {
     const santaUser = await client.users.fetch(santa);
     const receiverUser = await client.users.fetch(receiver);
     santaUser.send({
-      embeds: [getEmbedForSanta(receiverUser)],
+      embeds: [getEmbedForSanta(receiverUser, santas[j])],
     });
   }
   const santasConfig = await santasDb.get(santasConfigKey);
@@ -171,22 +171,24 @@ async function start(client) {
 /**
  * Gets an embed to send to the Secret Santa about their receiver.
  * @param {User} user
- *  The receiver of the Santa.
+ *  The receiver (Discord User) of the Santa.
+ * @param {Object} registrationInfo
+ *  The receiver (Santa Object) of the Santa.
  * @returns
  *  The Embed to send to the Santa.
  */
-function getEmbedForSanta(user) {
+function getEmbedForSanta(user, registrationInfo) {
   const fields = [{
     name: 'Name',
-    value: `${user.name}`,
+    value: `${registrationInfo.name}`,
     inline: false,
   }, {
     name: 'Address',
-    value: `${user.address}`,
+    value: `${registrationInfo.address}`,
     inline: false,
   }, {
     name: 'Notes',
-    value: `${user.notes}`,
+    value: `${registrationInfo.notes}`,
     inline: false,
   }];
   const embed = new EmbedBuilder()
