@@ -67,25 +67,26 @@ module.exports = {
     logger.debug(`Resolving subcommand: ${subcommand}`);
 
     if (subcommand === 'start' || subcommand === 'stop') {
+      await interaction.deferReply({ ephemeral: true });
       if (!config.users.admins.includes(interaction.user.id)) {
-        interaction.reply({
+        interaction.followUp({
           content: 'You do not have permission to run this command.',
           ephemeral: true,
         });
       } else if (subcommand === 'start' && !(await SantaManager.started())) {
         await SantaManager.start();
-        interaction.reply({
+        interaction.followUp({
           content: 'Secret Santa has been started.',
           ephemeral: true,
         });
       } else if (subcommand === 'reset' && await SantaManager.started()) {
         await SantaManager.reset();
-        interaction.reply({
+        interaction.followUp({
           content: 'Secret Santa has been reset.',
           ephemeral: true,
         });
       } else {
-        interaction.reply({
+        interaction.followUp({
           content: `[ERROR] The Secret Santa session is already in the state you are trying to set. Failed to ${subcommand}.`,
           ephemeral: true,
         });
