@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const Keyv = require('keyv');
 const { KeyvFile } = require('keyv-file');
+const { EmbedBuilder } = require('discord.js');
 const config = require(path.join(__dirname, '../../config.js'));
 
 const santasDb = new Keyv({
@@ -143,10 +144,54 @@ async function getChannelId() {
 /**
  * Sets the state of the Secret Santa session as started.
  */
-async function start() {
+async function start(client) {
+  const santas = await getAll();
+  for (let i = 0; i < santas.length; i++) {
+    const j = i === (santas.length - 1) ? 0 : i + 1;
+    const santa = santas[i].discordId;
+    const receiver = santas[j].discordId;
+    await setReceiver(santa, receiver);
+    const santaUser = await client.users.fetch(santa);
+    const receiverUser = await client.users.fetch(receiver);
+    santaUser.send({
+      embeds: [getEmbedForSanta(receiverUser)],
+    });
+  }
   const santasConfig = await santasDb.get(santasConfigKey);
   santasConfig.gameStarted = true;
   await santasDb.set(santasConfigKey, santasConfig);
+}
+
+/**
+ * Gets an embed to send to the Secret Santa about their receiver.
+ * @param {User} user
+ *  The receiver of the Santa.
+ * @returns
+ *  The Embed to send to the Santa.
+ */
+function getEmbedForSanta(user) {
+  const fields = [{
+    name: 'Name',
+    value: `${user.name}`,
+    inline: false,
+  }, {
+    name: 'Address',
+    value: `${user.address}`,
+    inline: false,
+  }, {
+    name: 'Notes',
+    value: `${user.notes}`,
+    inline: false,
+  }];
+  const embed = new EmbedBuilder()
+    .setColor(0xE67E22)
+    .setAuthor({
+      name: `${user.username} was selected as your receiver!`,
+      iconURL: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`,
+    })
+    .setDescription('Send them a gift for Christmas :)')
+    .addFields(fields);
+  return embed;
 }
 
 /**

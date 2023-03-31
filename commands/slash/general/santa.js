@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 const path = require('path');
 const SantaManager = require(path.join(__dirname, '../../../utils/santa/santa-manager.js'));
+const config = require(path.join(__dirname, '../../../config.js'));
 const logger = require(path.join(__dirname, '../../../utils/logger.js'));
 SantaManager.initSantas();
 
@@ -51,13 +52,45 @@ module.exports = {
     .addSubcommand(subcommand => subcommand
       .setName('unregister')
       .setDescription('Unregister for Secret Santa.'),
+    )
+    .addSubcommand(subcommand => subcommand
+      .setName('start')
+      .setDescription('Starts the Secret Santa session. Admin-only.'),
+    )
+    .addSubcommand(subcommand => subcommand
+      .setName('reset')
+      .setDescription('Resets Secret Santa. Admin-only.'),
     ),
   async execute(interaction) {
     const client = interaction.client;
     const subcommand = interaction.options.getSubcommand();
     logger.debug(`Resolving subcommand: ${subcommand}`);
 
-    if (subcommand.endsWith('register')) {
+    if (subcommand === 'start' || subcommand === 'stop') {
+      if (!config.users.admins.includes(interaction.user.id)) {
+        interaction.reply({
+          content: 'You do not have permission to run this command.',
+          ephemeral: true,
+        });
+      } else if (subcommand === 'start' && !(await SantaManager.started())) {
+        await SantaManager.start();
+        interaction.reply({
+          content: 'Secret Santa has been started.',
+          ephemeral: true,
+        });
+      } else if (subcommand === 'reset' && await SantaManager.started()) {
+        await SantaManager.reset();
+        interaction.reply({
+          content: 'Secret Santa has been reset.',
+          ephemeral: true,
+        });
+      } else {
+        interaction.reply({
+          content: `[ERROR] The Secret Santa session is already in the state you are trying to set. Failed to ${subcommand}.`,
+          ephemeral: true,
+        });
+      }
+    } else if (subcommand.endsWith('register')) {
       if (await SantaManager.started()) {
         interaction.reply({
           content: `[ERROR] The Secret Santa session has already started. Failed to ${subcommand}.`,
