@@ -74,11 +74,18 @@ module.exports = {
           ephemeral: true,
         });
       } else if (subcommand === 'start' && !(await SantaManager.started())) {
-        await SantaManager.start();
-        interaction.followUp({
-          content: 'Secret Santa has been started.',
-          ephemeral: true,
-        });
+        const resp = await SantaManager.start();
+        if (resp) {
+          interaction.followUp({
+            content: 'Secret Santa has been started.',
+            ephemeral: true,
+          });
+        } else {
+          interaction.followUp({
+            content: 'Not enough users are registered to start.',
+            ephemeral: true,
+          });
+        }
       } else if (subcommand === 'reset' && await SantaManager.started()) {
         await SantaManager.reset();
         interaction.followUp({

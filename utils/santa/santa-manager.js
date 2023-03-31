@@ -143,9 +143,14 @@ async function getChannelId() {
 
 /**
  * Sets the state of the Secret Santa session as started.
+ * @returns
+ *  True if successfully started. False otherwise.
  */
 async function start(client) {
   const santas = await getAll();
+  if (!santas.length) {
+    return false;
+  }
   for (let i = 0; i < santas.length; i++) {
     const j = i === (santas.length - 1) ? 0 : i + 1;
     const santa = santas[i].discordId;
@@ -160,6 +165,7 @@ async function start(client) {
   const santasConfig = await santasDb.get(santasConfigKey);
   santasConfig.gameStarted = true;
   await santasDb.set(santasConfigKey, santasConfig);
+  return true;
 }
 
 /**
@@ -213,6 +219,7 @@ async function reset() {
 async function getAll() {
   const santasConfig = await santasDb.get(santasConfigKey);
   const ret = Object.values(santasConfig.santas);
+  if (ret.length < 3) { return []; }
   shuffle(ret);
   while (!(await checkExclusions(ret))) {
     shuffle(ret);
