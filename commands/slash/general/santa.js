@@ -60,6 +60,10 @@ module.exports = {
     .addSubcommand(subcommand => subcommand
       .setName('reset')
       .setDescription('Resets Secret Santa. Admin-only.'),
+    )
+    .addSubcommand(subcommand => subcommand
+      .setName('list')
+      .setDescription('Gets a list of users who are registered. Admin-only.'),
     ),
   async execute(interaction) {
     const client = interaction.client;
@@ -74,7 +78,7 @@ module.exports = {
           ephemeral: true,
         });
       } else if (subcommand === 'start' && !(await SantaManager.started())) {
-        const resp = await SantaManager.start();
+        const resp = await SantaManager.start(client);
         if (resp) {
           interaction.followUp({
             content: 'Secret Santa has been started.',

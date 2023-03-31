@@ -147,7 +147,7 @@ async function getChannelId() {
  *  True if successfully started. False otherwise.
  */
 async function start(client) {
-  const santas = await getAll();
+  const santas = await getAll(true);
   if (!santas.length) {
     return false;
   }
@@ -212,17 +212,22 @@ async function reset() {
 }
 
 /**
- *
+ * Gets a list of users who are registered for Secret Santa.
+ * @param {Boolean} shouldShuffle
  * @returns
  *  An array of santa objects currently registered.
  */
-async function getAll() {
+async function getAll(shouldShuffle) {
   const santasConfig = await santasDb.get(santasConfigKey);
   const ret = Object.values(santasConfig.santas);
-  if (ret.length < 3) { return []; }
-  shuffle(ret);
-  while (!(await checkExclusions(ret))) {
+  if (shouldShuffle) {
+    if (ret.length < 3) {
+      return [];
+    }
     shuffle(ret);
+    while (!(await checkExclusions(ret))) {
+      shuffle(ret);
+    }
   }
   return ret;
 }
