@@ -62,6 +62,7 @@ async function getFromId(etroId) {
     set.gcd = json.totalParams?.filter(p => p.name.startsWith(config.etroParams.gcd))
       .sort((a, b) => a.name.localeCompare(b.name));
     set.dmg = json.totalParams?.find(p => p.name === config.etroParams.dmg)?.value;
+    set.notes = json.notes;
     if (json.food && typeof json.food === 'number') {
       const foodJson = await getJsonFromUrl(`${config.etroFoodApiUrl}${json.food}`);
       if (foodJson) {
@@ -152,6 +153,9 @@ function getAsEmbed(etroSet) {
   if (etroSet.food) {
     fields.push({ name: config.embedOptions.foodName, value: `${etroSet.food}`, inline: false });
   }
+  if (etroSet.notes) {
+    fields.push({ name: config.embedOptions.noteName, value: `\`\`\`${etroSet.notes}\`\`\``, inline: false });
+  }
 
   const embed = new EmbedBuilder()
     .setColor(config.embedOptions.color)
@@ -164,7 +168,7 @@ function getAsEmbed(etroSet) {
     .setTitle(config.embedOptions.title)
     .setDescription(etroSet.raidPieces.reduce((acc, cur, i) => {
       return `${acc}${cur.charAt(0).toUpperCase()}${cur.substr(1)}${i != etroSet.raidPieces.length - 1 ? ', ' : ''}`;
-    }, ''))
+    }, '') ?? 'None')
     .addFields(fields);
   return embed;
 }

@@ -81,6 +81,7 @@ const embedOptions = Object.freeze({
   thumbnailUrl: 'https://raw.githubusercontent.com/anoyetta/ACT.Hojoring/master/source/ACT.SpecialSpellTimer/ACT.SpecialSpellTimer.Core/resources/icon/Job/',
   damageName: 'Damage per 100 Potency',
   foodName: 'Food',
+  noteName: 'Notes',
 });
 
 module.exports = {
