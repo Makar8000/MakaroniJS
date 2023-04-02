@@ -8,7 +8,7 @@
     "prod": "pm2 start index.js --name \"makaroni\" --log data/Makaroni.log",
     "stop": "pm2 stop makaroni",
     "monitor": "pm2 logs makaroni",
-    "restart": "git pull && npm install && pm2 restart makaroni",
+    "restart": "rm -f package-lock.json && git pull && npm install && pm2 restart makaroni",
     "deploy-commands": "node -r dotenv/config utils/deploy-commands",
     "deploy-commands-local": "npm run deploy-commands -- --local",
     "remove-commands": "npm run deploy-commands -- --remove",
@@ -21,19 +21,19 @@
   "license": "ISC",
   "dependencies": {
     "async-lock": "^1.4.0",
-    "discord.js": "^14.8.0",
-    "dotenv": "^16.0.1",
+    "discord.js": "^14.9.0",
+    "dotenv": "^16.0.3",
     "keyv": "^4.5.2",
     "keyv-file": "^0.2.0",
     "minimist": "^1.2.8",
     "moment": "^2.29.4",
-    "moment-timezone": "^0.5.42",
+    "moment-timezone": "^0.5.43",
     "node-fetch": "^2.6.9",
     "node-schedule": "^2.1.1",
-    "pino": "^7.0.0-rc.9",
+    "pino": "^8.11.0",
     "pino-pretty": "^10.0.0"
   },
   "devDependencies": {
-    "eslint": "^8.23.0"
+    "eslint": "^8.37.0"
   }
 }
