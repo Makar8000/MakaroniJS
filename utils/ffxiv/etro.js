@@ -157,6 +157,9 @@ function getAsEmbed(etroSet) {
     fields.push({ name: config.embedOptions.noteName, value: `\`\`\`${etroSet.notes}\`\`\``, inline: false });
   }
 
+  const description = etroSet.raidPieces.reduce((acc, cur, i) => {
+    return `${acc}${cur.charAt(0).toUpperCase()}${cur.substr(1)}${i != etroSet.raidPieces.length - 1 ? ', ' : ''}`;
+  }, '');
   const embed = new EmbedBuilder()
     .setColor(config.embedOptions.color)
     .setThumbnail(`${config.embedOptions.thumbnailUrl}${etroSet.job}_Solid.png`)
@@ -166,9 +169,7 @@ function getAsEmbed(etroSet) {
       url: `${config.etroUrl}${etroSet.etroId}`,
     })
     .setTitle(config.embedOptions.title)
-    .setDescription(etroSet.raidPieces.reduce((acc, cur, i) => {
-      return `${acc}${cur.charAt(0).toUpperCase()}${cur.substr(1)}${i != etroSet.raidPieces.length - 1 ? ', ' : ''}`;
-    }, '') ?? 'None')
+    .setDescription(description.length > 0 ? description : 'None')
     .addFields(fields);
   return embed;
 }
