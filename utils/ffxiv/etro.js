@@ -84,6 +84,7 @@ async function getFromId(etroId) {
         } else if (augType === config.tokenTypes.WEAPON) {
           set.weaponToken = true;
         }
+        set.tomes += config.tomeCost[slot];
       } else {
         set.raidPieces.push(slot.startsWith('finger') ? 'ring' : slot);
       }
@@ -99,6 +100,9 @@ async function getFromId(etroId) {
 function getAsEmbed(etroSet) {
   const fields = [];
 
+  if (etroSet.tomes > 0) {
+    fields.push({ name: 'Tomes', value: `${etroSet.tomes}`, inline: true });
+  }
   if (etroSet.leftTokens > 0) {
     fields.push({ name: config.tokenTypes.LEFT, value: `${etroSet.leftTokens}`, inline: true });
   }

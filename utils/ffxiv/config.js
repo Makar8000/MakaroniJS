@@ -4,12 +4,48 @@ const tokenTypes = Object.freeze({
   RIGHT: 'Dusting(s)',
 });
 
+const augmentTokens = Object.freeze({
+  weapon: tokenTypes.WEAPON,
+  head: tokenTypes.LEFT,
+  body: tokenTypes.LEFT,
+  hands: tokenTypes.LEFT,
+  legs: tokenTypes.LEFT,
+  feet: tokenTypes.LEFT,
+  ears: tokenTypes.RIGHT,
+  neck: tokenTypes.RIGHT,
+  wrists: tokenTypes.RIGHT,
+  fingerL: tokenTypes.RIGHT,
+  fingerR: tokenTypes.RIGHT,
+});
+
+const tomeCategories = Object.freeze({
+  SMALL: 375,
+  MEDIUM: 495,
+  LARGE: 825,
+  WEAPON: 500,
+});
+
+const tomeCost = Object.freeze({
+  weapon: tomeCategories.WEAPON,
+  head: tomeCategories.MEDIUM,
+  body: tomeCategories.LARGE,
+  hands: tomeCategories.MEDIUM,
+  legs: tomeCategories.LARGE,
+  feet: tomeCategories.MEDIUM,
+  ears: tomeCategories.SMALL,
+  neck: tomeCategories.SMALL,
+  wrists: tomeCategories.SMALL,
+  fingerL: tomeCategories.SMALL,
+  fingerR: tomeCategories.SMALL,
+});
+
 const defaultEtroSet = {
   etroId: null,
   job: null,
   leftTokens: 0,
   rightTokens: 0,
   weaponToken: false,
+  tomes: 0,
   raidPieces: [],
 };
 
@@ -53,19 +89,8 @@ module.exports = {
   defaultEtroSet,
   tokenTypes,
   etroParams,
-  augmentTokens: {
-    weapon: tokenTypes.WEAPON,
-    head: tokenTypes.LEFT,
-    body: tokenTypes.LEFT,
-    hands: tokenTypes.LEFT,
-    legs: tokenTypes.LEFT,
-    feet: tokenTypes.LEFT,
-    ears: tokenTypes.RIGHT,
-    neck: tokenTypes.RIGHT,
-    wrists: tokenTypes.RIGHT,
-    fingerL: tokenTypes.RIGHT,
-    fingerR: tokenTypes.RIGHT,
-  },
+  augmentTokens,
+  tomeCost,
 
   // XIVAPI
   apiUrl: 'http://xivapi.com',
