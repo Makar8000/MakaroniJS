@@ -24,7 +24,7 @@ async function getFromId(etroId) {
     return null;
   }
 
-  const set = { ...config.defaultEtroSet, etroId };
+  const set = { ...JSON.parse(JSON.stringify(config.defaultEtroSet)), etroId };
   try {
     // Grab etro data
     const json = await getJsonFromUrl(`${config.etroApiUrl}${etroId}`);
@@ -70,6 +70,8 @@ async function getFromId(etroId) {
     }
 
     // Map out upgrade tokens vs raid pieces
+    const ringSlots = Object.keys(config.augmentTokens).reverse().splice(0, 2);
+    const ringItemNames = [];
     for (const slot of Object.keys(config.augmentTokens)) {
       const augType = config.augmentTokens[slot];
       const itemId = json[slot];
@@ -86,7 +88,28 @@ async function getFromId(etroId) {
         }
         set.tomes += config.tomeCost[slot];
       } else {
-        set.raidPieces.push(slot.startsWith('finger') ? 'ring' : slot);
+        const raidPiece = slot.startsWith('finger') ? 'ring' : slot;
+        if (!set.raidPieces.includes(raidPiece)) {
+          set.raidPieces.push(slot.startsWith('finger') ? 'ring' : slot);
+        }
+      }
+
+      // Hack for non-augmented tome rings
+      if (ringSlots.includes(slot)) {
+        ringItemNames.push(itemNameMap[itemId]);
+        if (ringItemNames.length === 2 && ringItemNames[0] !== ringItemNames[1]
+          && (
+            (ringItemNames[0].startsWith('Augmented') && ringItemNames[0].endsWith(ringItemNames[1]))
+            || (ringItemNames[1].startsWith('Augmented') && ringItemNames[1].endsWith(ringItemNames[0]))
+          )
+        ) {
+          // Add an extra ring to the tome counter and remove it from raidPieces
+          set.tomes += config.tomeCost[slot];
+          const idx = set.raidPieces.indexOf('ring');
+          if (idx >= 0) {
+            set.raidPieces.splice(idx, 1);
+          }
+        }
       }
     }
   } catch (error) {

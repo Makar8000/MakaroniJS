@@ -14,6 +14,7 @@ const augmentTokens = Object.freeze({
   ears: tokenTypes.RIGHT,
   neck: tokenTypes.RIGHT,
   wrists: tokenTypes.RIGHT,
+  // Rings need to be the last 2 in this list
   fingerL: tokenTypes.RIGHT,
   fingerR: tokenTypes.RIGHT,
 });
@@ -39,7 +40,7 @@ const tomeCost = Object.freeze({
   fingerR: tomeCategories.SMALL,
 });
 
-const defaultEtroSet = {
+const defaultEtroSet = Object.freeze({
   etroId: null,
   job: null,
   leftTokens: 0,
@@ -47,9 +48,9 @@ const defaultEtroSet = {
   weaponToken: false,
   tomes: 0,
   raidPieces: [],
-};
+});
 
-const etroParams = {
+const etroParams = Object.freeze({
   dmg: 'Damage (Expected)',
   gcd: 'GCD',
   statOrder: [
@@ -70,17 +71,17 @@ const etroParams = {
     // Piety & Tenacity
     19, 6,
   ],
-};
+});
 
-const embedOptions = {
+const embedOptions = Object.freeze({
   color: 0xB460A6,
   name: 'Etro Data',
-  title: 'Non-Augmented Pieces',
+  title: 'Non-Tome Pieces',
   iconUrl: 'https://etro.gg/favicon.png',
   thumbnailUrl: 'https://raw.githubusercontent.com/anoyetta/ACT.Hojoring/master/source/ACT.SpecialSpellTimer/ACT.SpecialSpellTimer.Core/resources/icon/Job/',
   damageName: 'Damage per 100 Potency',
   foodName: 'Food',
-};
+});
 
 module.exports = {
   // Etro
