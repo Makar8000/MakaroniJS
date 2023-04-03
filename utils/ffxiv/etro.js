@@ -159,7 +159,7 @@ function getAsEmbed(etroSet) {
 
   const description = etroSet.raidPieces.reduce((acc, cur, i) => {
     return `${acc}${cur.charAt(0).toUpperCase()}${cur.substr(1)}${i != etroSet.raidPieces.length - 1 ? ', ' : ''}`;
-  }, '');
+  }, '').replaceAll(/<(?:hr|\/(?:h[0-9]|p|li))>/g, '\n').replaceAll(/<[^<]+>/g, ' ').trim();
   const embed = new EmbedBuilder()
     .setColor(config.embedOptions.color)
     .setThumbnail(`${config.embedOptions.thumbnailUrl}${etroSet.job}_Solid.png`)
