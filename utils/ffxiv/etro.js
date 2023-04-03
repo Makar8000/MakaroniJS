@@ -62,7 +62,9 @@ async function getFromId(etroId) {
     set.gcd = json.totalParams?.filter(p => p.name.startsWith(config.etroParams.gcd))
       .sort((a, b) => a.name.localeCompare(b.name));
     set.dmg = json.totalParams?.find(p => p.name === config.etroParams.dmg)?.value;
-    set.notes = json.notes;
+    set.notes = json.notes
+      .replaceAll(/<(?:hr|\/(?:h[0-9]|p|li))>/g, '\n')
+      .replaceAll(/<[^<]+>/g, ' ').trim();
     if (json.food && typeof json.food === 'number') {
       const foodJson = await getJsonFromUrl(`${config.etroFoodApiUrl}${json.food}`);
       if (foodJson) {
@@ -159,7 +161,7 @@ function getAsEmbed(etroSet) {
 
   const description = etroSet.raidPieces.reduce((acc, cur, i) => {
     return `${acc}${cur.charAt(0).toUpperCase()}${cur.substr(1)}${i != etroSet.raidPieces.length - 1 ? ', ' : ''}`;
-  }, '').replaceAll(/<(?:hr|\/(?:h[0-9]|p|li))>/g, '\n').replaceAll(/<[^<]+>/g, ' ').trim();
+  }, '');
   const embed = new EmbedBuilder()
     .setColor(config.embedOptions.color)
     .setThumbnail(`${config.embedOptions.thumbnailUrl}${etroSet.job}_Solid.png`)
