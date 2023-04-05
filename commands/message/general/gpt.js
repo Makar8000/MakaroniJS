@@ -16,14 +16,17 @@ module.exports = {
         name: 'msg',
         description: 'The message to feed into GPT 3.5 Turbo',
         isValid: message => message?.content?.trim()?.split(' ')?.length >= 2,
-        getValue: message => message.content.trim().match(Regexes.msg).groups.msg,
+        getValue: message => message.content.trim().match(Regexes.msg)?.groups?.msg,
       },
     ],
   },
   async execute(message, params) {
-    // const client = message.client;
-    // logger.info(message);
     const msg = params.get('msg')?.value;
+    if (!msg) {
+      await message.channel.send(`Sorry, but I was unable to parse your query.`);
+      return;
+    }
+
     const respHistory = await GPTManager.sendPrompt(message, msg);
     const latest = respHistory[respHistory.length - 1];
     if (latest.content) {
