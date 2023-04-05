@@ -1,6 +1,7 @@
 const path = require('path');
 const { Configuration, OpenAIApi } = require('openai');
 const { Collection } = require('discord.js');
+const config = require(path.join(__dirname, 'config.js'));
 const logger = require(path.join(__dirname, '../logger.js'));
 
 const openai = new OpenAIApi(new Configuration({
@@ -19,9 +20,9 @@ const prompts = new Collection();
 function getPromptContext(message) {
   const messageId = message.reference?.messageId;
   if (messageId) {
-    return prompts.get(messageId) ?? [];
+    return prompts.get(messageId) ?? [...config.systemMessages];
   }
-  return [];
+  return [...config.systemMessages];
 }
 
 /**
