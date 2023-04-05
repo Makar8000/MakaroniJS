@@ -24,6 +24,7 @@ client.commands = {
   message: new Collection(),
 };
 parseCommands(path.join(__dirname, 'commands/slash'), client.commands.slash);
+parseCommands(path.join(__dirname, 'commands/message'), client.commands.message);
 
 logger.debug('Finished creating map of commands. Registering events...');
 const eventsPath = path.join(__dirname, 'events');
