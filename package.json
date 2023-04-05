@@ -30,6 +30,7 @@
     "moment-timezone": "^0.5.43",
     "node-fetch": "^2.6.9",
     "node-schedule": "^2.1.1",
+    "openai": "^3.2.1",
     "pino": "^8.11.0",
     "pino-pretty": "^10.0.0"
   },
