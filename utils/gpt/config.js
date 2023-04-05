@@ -11,5 +11,5 @@ const systemMessages = [
 ];
 
 module.exports = {
-  systemMessages,
+  systemMessages: systemMessages.map(m => ({ role: 'system', content: m })),
 }
