@@ -16,13 +16,14 @@ const createGeneric = (roomUrl, videoUrl, key, user, msg) => {
       .setAuthor({
         name: `${user.username} ${msg}`,
         iconURL: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`,
+        url: `${roomUrl}`,
       })
       .setThumbnail(embedOptions.thumbnailUrl)
       .setTitle(embedOptions.title)
       .setURL(`${roomUrl}`)
       .addFields(
-        { name: embedOptions.fieldVideoUrl, value: `${videoUrl}` },
         { name: embedOptions.fieldRoomUrl, value: `<${roomUrl}>` },
+        { name: embedOptions.fieldVideoUrl, value: `${videoUrl}` },
         { name: embedOptions.fieldId, value: `\`${key}\`` },
       )
       .setTimestamp();
