@@ -68,7 +68,8 @@ module.exports = {
     const roomId = interaction.options.getString('room-id');
     if (!roomId) {
       const key = await w2g.createRoom(videoUrl);
-      if (key) {
+      const resp = await w2g.addToRoom(key, videoUrl, { title: `[EP ${animeInfo.episodeNumber}] ${animeInfo.title}` });
+      if (resp) {
         animeInfo.roomId = key;
         animeInfo.roomUrl = await w2g.getRoomUrl(key);
         interaction.followUp({
@@ -81,7 +82,7 @@ module.exports = {
         });
       }
     } else {
-      const resp = await w2g.addToRoom(roomId, videoUrl, `[EP ${animeInfo.episodeNumber}] ${animeInfo.title}`);
+      const resp = await w2g.addToRoom(roomId, videoUrl, { title: `[EP ${animeInfo.episodeNumber}] ${animeInfo.title}` });
       if (resp) {
         animeInfo.roomId = roomId;
         animeInfo.roomUrl = await w2g.getRoomUrl(roomId);

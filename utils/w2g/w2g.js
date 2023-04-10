@@ -11,18 +11,22 @@ const logger = require(path.join(__dirname, '../logger.js'));
  */
 async function createRoom(url) {
   try {
+    const body = {
+      w2g_api_key: `${process.env.W2G_KEY}`,
+      bg_color: '#1F1F1F',
+      bg_opacity: '100',
+    };
+    if (url) {
+      body.share = `${url}`;
+    }
+
     const resp = await fetch('https://api.w2g.tv/rooms/create.json', {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        w2g_api_key: `${process.env.W2G_KEY}`,
-        share: `${url}`,
-        bg_color: '#1F1F1F',
-        bg_opacity: '100',
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!resp.ok) {
@@ -45,27 +49,33 @@ async function createRoom(url) {
  *  The room ID to add the video to.
  * @param {String} url
  *  The URL of the video to add.
+ * @param {Object} opts
+ *  Some optional options for the addToRoom function:
+ *    - title: the title of the video
  * @returns
  *  True if successfully added. False otherwise.
  */
-async function addToRoom(streamkey, url, title) {
+async function addToRoom(streamkey, url, opts) {
   try {
+    const body = {
+      w2g_api_key: `${process.env.W2G_KEY}`,
+    };
     const item = {
       url: `${url}`,
     };
-    if (title) {
-      item.title = title;
+
+    if (typeof opts.title === 'string') {
+      item.title = opts.title;
     }
+
+    body.add_items = [item];
     const resp = await fetch(`https://api.w2g.tv/rooms/${streamkey}/playlists/current/playlist_items/sync_update`, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        w2g_api_key: `${process.env.W2G_KEY}`,
-        add_items: [item],
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!resp.ok) {
