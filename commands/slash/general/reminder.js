@@ -12,7 +12,7 @@ module.exports = {
     .addSubcommand(subcommand => subcommand
       .setName('create')
       .setDescription('Create a new reminder to send in the future.')
-      .addNumberOption(option => option
+      .addIntegerOption(option => option
         .setName('time')
         .setDescription('The time to send the reminder. This should be a Unix Timestamp (Seconds). https://hammertime.cyou/')
         .setRequired(true))
