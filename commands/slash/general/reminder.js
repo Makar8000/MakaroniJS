@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 const path = require('path');
 const moment = require('moment');
-const config = require('../../../utils/reminders/config');
+const config = require(path.join(__dirname, '../../../utils/reminders/config'));
 const ReminderManager = require(path.join(__dirname, '../../../utils/reminders/reminder-manager.js'));
 const logger = require(path.join(__dirname, '../../../utils/logger.js'));
 

@@ -1,5 +1,5 @@
 const path = require('path');
-const GPTManager = require('../../../utils/gpt/gpt-manager');
+const GPTManager = require(path.join(__dirname, '../../../utils/gpt/gpt-manager'));
 const logger = require(path.join(__dirname, '../../../utils/logger.js'));
 
 const Regexes = {
