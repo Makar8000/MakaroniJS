@@ -25,7 +25,7 @@ module.exports = {
   async execute(interaction) {
     await interaction.deferReply();
     const animeName = interaction.options.getString('anime-name');
-    const episode = interaction.options.getInteger('episode');
+    const episodeNumber = interaction.options.getInteger('episode') ?? 1;
 
     const animeList = await consumet.search(animeName);
     if (animeList?.length < 1) {
@@ -35,7 +35,7 @@ module.exports = {
       });
       return;
     }
-    const animeInfo = await consumet.fetchAnimeInfo(animeList[0].id);
+    const animeInfo = await consumet.fetchAnimeInfo(animeList[0].id, episodeNumber);
     if (!animeInfo) {
       interaction.followUp({
         content: `[ERROR] Unable to find any episodes for \`${animeName}\`.`,
@@ -43,8 +43,7 @@ module.exports = {
       });
       return;
     }
-    const episodeNumber = episode ?? 1;
-    const episodeId = animeInfo.episodes.find(e => e.number === (episodeNumber))?.id;
+    const episodeId = animeInfo.episodes.find(e => e.number === episodeNumber)?.id;
     if (!episodeId) {
       interaction.followUp({
         content: `[ERROR] Unable to find episode ${episodeNumber} of \`${animeName}\`.`,

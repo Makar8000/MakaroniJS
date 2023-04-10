@@ -30,20 +30,22 @@ async function search(query) {
  * Gets anime information and episode lists for a given Anime ID.
  * @param {String} id
  *  The Anime ID provided by the Consumet API.
+ * @param {Number} episodeNumber
+ *  The optional episode number that we are specifically looking for.
  * @returns
  *  The anime information, or null if the ID is invalid.
  */
-async function fetchAnimeInfo(id) {
+async function fetchAnimeInfo(id, episodeNumber) {
   try {
     const time = moment();
     infoCache.sweep(a => time.isAfter(a.expires));
 
     let data = infoCache.get(id);
-    if (!data) {
+    if (!data?.episodes?.find(e => e.number === episodeNumber)) {
       data = await consumet.fetchAnimeInfo(id);
     }
     if (data?.episodes?.length > 0) {
-      infoCache.set(id, { ...data, expires: moment().add(2, 'hours') });
+      infoCache.set(id, { ...data, expires: moment().add(6, 'hours') });
       return data;
     }
   } catch (error) {
