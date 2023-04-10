@@ -15,7 +15,7 @@ async function search(query) {
   try {
     const data = await consumet.search(query);
     if (data?.results?.length > 0) {
-      return data.results;
+      return data.results.filter(d => d.subOrDub === 'sub');
     }
   } catch (error) {
     logger.error(error);
