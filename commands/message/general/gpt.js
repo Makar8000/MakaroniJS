@@ -23,7 +23,7 @@ module.exports = {
   async execute(message, params) {
     const msg = params.get('msg')?.value;
     if (!msg) {
-      await message.channel.send(`Sorry, but I was unable to parse your query.`);
+      await message.channel.send('Sorry, but I was unable to parse your query.');
       return;
     }
 
