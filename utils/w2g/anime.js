@@ -1,8 +1,11 @@
 const path = require('path');
+const { Collection } = require('discord.js');
 const { ANIME } = require('@consumet/extensions');
+const moment = require('moment');
 const logger = require(path.join(__dirname, '../logger.js'));
 
 const consumet = new ANIME[process.env.ANIME_PROVIDER]();
+const infoCache = new Collection();
 
 /**
  * Search for an anime using the Consumet API.
@@ -32,8 +35,15 @@ async function search(query) {
  */
 async function fetchAnimeInfo(id) {
   try {
-    const data = await consumet.fetchAnimeInfo(id);
+    const time = moment();
+    infoCache.sweep(a => time.isAfter(a.expires));
+
+    let data = infoCache.get(id);
+    if (!data) {
+      data = await consumet.fetchAnimeInfo(id);
+    }
     if (data?.episodes?.length > 0) {
+      infoCache.set(id, { ...data, expires: moment().add(2, 'hours') });
       return data;
     }
   } catch (error) {
