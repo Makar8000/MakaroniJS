@@ -48,8 +48,14 @@ async function createRoom(url) {
  * @returns
  *  True if successfully added. False otherwise.
  */
-async function addToRoom(streamkey, url) {
+async function addToRoom(streamkey, url, title) {
   try {
+    const item = {
+      url: `${url}`,
+    };
+    if (title) {
+      item.title = title;
+    }
     const resp = await fetch(`https://api.w2g.tv/rooms/${streamkey}/playlists/current/playlist_items/sync_update`, {
       method: 'POST',
       headers: {
@@ -58,7 +64,7 @@ async function addToRoom(streamkey, url) {
       },
       body: JSON.stringify({
         w2g_api_key: `${process.env.W2G_KEY}`,
-        add_items: [{ 'url': `${url}` }],
+        add_items: [item],
       }),
     });
 

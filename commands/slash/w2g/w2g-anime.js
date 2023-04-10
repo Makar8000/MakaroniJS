@@ -81,7 +81,7 @@ module.exports = {
         });
       }
     } else {
-      const resp = await w2g.addToRoom(roomId, videoUrl);
+      const resp = await w2g.addToRoom(roomId, videoUrl, `[EP ${animeInfo.episodeNumber}] ${animeInfo.title}`);
       if (resp) {
         animeInfo.roomId = roomId;
         animeInfo.roomUrl = await w2g.getRoomUrl(roomId);
