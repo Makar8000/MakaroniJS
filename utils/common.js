@@ -13,7 +13,7 @@ const getDiscordStr = (str, maxLen) => {
   // Italics
   newStr = newStr.replaceAll(/<\/?i>/g, '_');
   // New Lines
-  newStr = newStr.replaceAll(/<br\s?\/?>/g, '');
+  newStr = newStr.replaceAll(/<br\s?\/?>/g, '\n');
   // Bold
   newStr = newStr.replaceAll(/<\/?(?:b|strong)>/g, '**');
   // Other tags

@@ -129,7 +129,7 @@ const createGenericAnime = (animeInfo, user, msg) => {
       .setThumbnail(animeInfo.image)
       .setImage(animeInfo.cover)
       .setTitle(`${getDiscordStr(animeInfo.title.romaji, 216)} - Episode ${animeInfo.episodeNumber}`)
-      .setDescription(`${getDiscordStr(animeInfo.description, 4095)}`)
+      .setDescription(`${getDiscordStr(animeInfo.description.replaceAll(/<br\s?\/?>/g, '').replaceAll(/\n\n\(Source:\s[^)]+\).*$/gs, ''), 4095)}`)
       .setURL(`${animeInfo.roomUrl}`)
       .addFields(fields)
       .setTimestamp();
