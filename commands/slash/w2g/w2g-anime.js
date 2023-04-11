@@ -35,7 +35,7 @@ module.exports = {
       });
       return;
     }
-    const animeInfo = await consumet.fetchAnimeInfo(animeList[0].id, episodeNumber);
+    const animeInfo = await consumet.fetchAnimeInfo(animeList[0].id, animeName, episodeNumber);
     if (!animeInfo) {
       interaction.followUp({
         content: `[ERROR] Unable to find any episodes for \`${animeName}\`.`,
