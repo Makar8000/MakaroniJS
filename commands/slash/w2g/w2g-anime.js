@@ -23,7 +23,7 @@ module.exports = {
       .setDescription('The room ID to use. If none is provided, a new one will be created.'),
     ),
   async execute(interaction) {
-    await interaction.deferReply();
+    await interaction.deferReply({ ephemeral: true });
     const animeName = interaction.options.getString('anime-name');
     const episodeNumber = interaction.options.getInteger('episode') ?? 1;
 
@@ -71,9 +71,10 @@ module.exports = {
       if (resp) {
         animeInfo.roomId = key;
         animeInfo.roomUrl = await w2g.getRoomUrl(key);
-        interaction.followUp({
+        await interaction.channel.send({
           embeds: config.createSuccessAnime(animeInfo, interaction.user),
         });
+        await interaction.deleteReply();
       } else {
         interaction.followUp({
           content: 'Network error or invalid video url provided.',
@@ -85,9 +86,10 @@ module.exports = {
       if (resp) {
         animeInfo.roomId = roomId;
         animeInfo.roomUrl = await w2g.getRoomUrl(roomId);
-        interaction.followUp({
+        await interaction.channel.send({
           embeds: config.addSuccessAnime(animeInfo, interaction.user),
         });
+        await interaction.deleteReply();
       } else {
         interaction.followUp({
           content: 'Unable to add video. This could be due to a bad room ID or invalid video link.',

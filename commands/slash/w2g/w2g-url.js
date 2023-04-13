@@ -18,16 +18,17 @@ module.exports = {
       .setDescription('The room ID to use. If none is provided, a new one will be created.'),
     ),
   async execute(interaction) {
-    await interaction.deferReply();
+    await interaction.deferReply({ ephemeral: true });
     const videoUrl = interaction.options.getString('video-link');
     const roomId = interaction.options.getString('room-id');
     if (!roomId) {
       const key = await w2g.createRoom(videoUrl);
       if (key) {
         const url = await w2g.getRoomUrl(key);
-        interaction.followUp({
+        await interaction.channel.send({
           embeds: config.createSuccess(url, videoUrl, key, interaction.user),
         });
+        await interaction.deleteReply();
       } else {
         interaction.followUp({
           content: 'Network error or invalid video url provided.',
@@ -38,9 +39,10 @@ module.exports = {
       const resp = await w2g.addToRoom(roomId, videoUrl);
       if (resp) {
         const url = await w2g.getRoomUrl(roomId);
-        interaction.followUp({
+        await interaction.channel.send({
           embeds: config.addSuccess(url, videoUrl, roomId, interaction.user),
         });
+        await interaction.deleteReply();
       } else {
         interaction.followUp({
           content: 'Unable to add video. This could be due to a bad room ID or invalid video link.',
