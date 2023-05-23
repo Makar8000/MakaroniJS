@@ -62,9 +62,7 @@ async function getFromId(etroId) {
     set.gcd = json.totalParams?.filter(p => p.name.startsWith(config.etroParams.gcd))
       .sort((a, b) => a.name.localeCompare(b.name));
     set.dmg = json.totalParams?.find(p => p.name === config.etroParams.dmg)?.value;
-    set.notes = json.notes
-      .replaceAll(/<(?:hr|\/(?:h[0-9]|p|li))>/g, '\n')
-      .replaceAll(/<[^<]+>/g, ' ').trim();
+    set.notes = json.notes?.replaceAll(/<(?:hr|\/(?:h[0-9]|p|li))>/g, '\n')?.replaceAll(/<[^<]+>/g, ' ').trim();
     if (json.food && typeof json.food === 'number') {
       const foodJson = await getJsonFromUrl(`${config.etroFoodApiUrl}${json.food}`);
       if (foodJson) {
