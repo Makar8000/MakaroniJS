@@ -1,7 +1,7 @@
 const tokenTypes = Object.freeze({
   WEAPON: 'Ester',
   LEFT: 'Twine(s)',
-  RIGHT: 'Dusting(s)',
+  RIGHT: 'Shine(s)',
 });
 
 const augmentTokens = Object.freeze({
