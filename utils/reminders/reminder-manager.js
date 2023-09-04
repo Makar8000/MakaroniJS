@@ -152,8 +152,6 @@ async function sendReminder(client, reminder) {
  * Ran at startup.
  * @param {Client} client
  *  The discord.js client.
- * @returns
- *  The jobs that were scheduled.
  */
 async function initJobs(client) {
   const keys = await reminders.get('keys');

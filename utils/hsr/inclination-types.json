@@ -1,0 +1,38 @@
+{
+  "1001": {
+    "name": "Hot-Blooded Trailblazer",
+    "value": 1001,
+    "textMapList": [],
+    "newTextMapList": []
+  },
+  "1002": {
+    "name": "Pessimistic Trailblazer",
+    "value": 1002,
+    "textMapList": [],
+    "newTextMapList": []
+  },
+  "1003": {
+    "name": "Apologetic Trailblazer",
+    "value": 1003,
+    "textMapList": [],
+    "newTextMapList": []
+  },
+  "1004": {
+    "name": "Silent Trailblazer",
+    "value": 1004,
+    "textMapList": [],
+    "newTextMapList": []
+  },
+  "2001": {
+    "name": "The Echoer",
+    "value": 2001,
+    "textMapList": [],
+    "newTextMapList": []
+  },
+  "3001": {
+    "name": "The Meaning of Choice",
+    "value": 3001,
+    "textMapList": [],
+    "newTextMapList": []
+  }
+}

@@ -21,6 +21,9 @@
   "license": "ISC",
   "dependencies": {
     "@consumet/extensions": "^1.4.17",
+    "@octokit/plugin-retry": "^6.0.0",
+    "@octokit/plugin-throttling": "^7.0.0",
+    "@octokit/rest": "^20.0.1",
     "async-lock": "^1.4.0",
     "discord.js": "^14.9.0",
     "dotenv": "^16.0.3",
