@@ -8,7 +8,7 @@ const createSuccess = (reminder, user) => {
   const embed = new EmbedBuilder()
     .setColor(0x57F287)
     .setAuthor({
-      name: user.username,
+      name: user.displayName,
       iconURL: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`,
     })
     .setTitle('Reminder scheduled successfully!')
@@ -31,7 +31,7 @@ const listSuccess = (reminders, user) => {
   const embed = new EmbedBuilder()
     .setColor(0x7289DA)
     .setAuthor({
-      name: user.username,
+      name: user.displayName,
       iconURL: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`,
     })
     // .setTitle('Reminder List')

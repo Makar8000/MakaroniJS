@@ -43,7 +43,7 @@ module.exports = {
     logger.debug(`Resolving subcommand: ${subcommand}`);
 
     if (subcommand === 'create') {
-      const time = interaction.options.getNumber('time');
+      const time = interaction.options.getInteger('time');
       if (time < moment().unix() || `${time}`.length !== 10) {
         await interaction.followUp({
           content: config.invalidTime(time),

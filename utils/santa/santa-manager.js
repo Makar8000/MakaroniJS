@@ -194,7 +194,7 @@ function getEmbedForSanta(user, registrationInfo) {
   const embed = new EmbedBuilder()
     .setColor(0xE67E22)
     .setAuthor({
-      name: `${user.username} was selected as your receiver!`,
+      name: `${user.displayName} was selected as your receiver!`,
       iconURL: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`,
     })
     .setDescription('Send them a gift for Christmas :)')

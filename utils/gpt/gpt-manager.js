@@ -1,13 +1,10 @@
 const path = require('path');
-const { Configuration, OpenAIApi } = require('openai');
+const OpenAI = require('openai');
 const { Collection } = require('discord.js');
 const config = require(path.join(__dirname, 'config.js'));
 const logger = require(path.join(__dirname, '../logger.js'));
 
-const openai = new OpenAIApi(new Configuration({
-  apiKey: process.env.OPENAI_KEY,
-}));
-
+const openai = new OpenAI();
 const prompts = new Collection();
 
 /**
@@ -66,18 +63,15 @@ async function sendPrompt(message, prompt) {
       ...prevMessages,
       newPrompt,
     ];
-    const response = await openai.createChatCompletion({ model: 'gpt-3.5-turbo', messages });
-    if (response.status === 200) {
-      const responseMessage = response?.data?.choices?.shift()?.message;
-      if (typeof responseMessage === 'object') {
-        messages.push(responseMessage);
-        deletePromptContext(message);
-        return messages;
-      }
+    const response = await openai.chat.completions.create({ model: 'gpt-3.5-turbo', messages });
+    const responseMessage = response?.choices?.shift()?.message;
+    if (typeof responseMessage === 'object') {
+      messages.push(responseMessage);
+      deletePromptContext(message);
+      return messages;
     }
-    logger.error(`Invalid GPT response. [${response.status}]`);
   } catch (error) {
-    logger.error(error);
+    logger.error(`Invalid GPT response. [${error.status}] ${error.message}`);
   }
   return null;
 }
