@@ -37,7 +37,7 @@ async function loadIncData(sha) {
       if (incData[`${type}`]) {
         const id = incText[key].TalkSentenceID;
         const textId = talkSentence[`${id}`].TalkSentenceText.Hash;
-        incData[`${type}`].textMapList.push(textMap[`${textId}`]);
+        incData[`${type}`].textMapList.push({ id: id, text: textMap[`${textId}`] });
       }
     });
   });
@@ -62,14 +62,14 @@ async function checkForInclinationTypes(client) {
     const outputList = [];
     let atLeastOne = false;
     Object.keys(newData).map(type => {
-      newData[type].textMapList.map(text => {
-        if (!curInclData[type].textMapList.includes(text)) {
-          newData[type].newTextMapList.push(text);
+      newData[type].textMapList.map(newD => {
+        if (!curInclData[type].textMapList.find(oldD => oldD.id === newD.id)) {
+          newData[type].newTextMapList.push(newD);
         }
       });
 
       if (newData[type].newTextMapList.length) {
-        outputList.push(`### ${newData[type].name}\n- ${newData[type].newTextMapList.join('\n- ')}`);
+        outputList.push(`### ${newData[type].name}${newData[type].newTextMapList.map(({ text }) => `\n- ${text}`).join('')}`);
         atLeastOne = true;
       } else {
         outputList.push(`### ${newData[type].name}\n_no new dialogue options_`);
@@ -137,8 +137,8 @@ async function scheduleInclinationCheck(client, userId, isInitial) {
     curInclHash = await getLatestCommitHash();
     curInclData = await loadIncData();
     // Demo SHA for testing purposes.
-    // curInclHash = '1ab86f99405026f6c9b1be98661a584e1a38a0df';
-    // curInclData = await loadIncData('1ab86f99405026f6c9b1be98661a584e1a38a0df');
+    // curInclHash = 'aa811519a5de772bf4055e8ea8b9254f90b7746c';
+    // curInclData = await loadIncData('aa811519a5de772bf4055e8ea8b9254f90b7746c');
   }
 
   // Don't run the job again if it's already running
