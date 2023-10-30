@@ -64,15 +64,28 @@ module.exports = {
     .addSubcommand(subcommand => subcommand
       .setName('list')
       .setDescription('Gets a list of users who are registered. Admin-only.'),
+    )
+    .addSubcommand(subcommand => subcommand
+      .setName('blacklist')
+      .setDescription('Gets a list of banned Secret Santa pairs. Admin-only.'),
+    )
+    .addSubcommand(subcommand => subcommand
+      .setName('selectedlist')
+      .setDescription('Gets a list of selected Secret Santa pairs. Admin-only.')
+      .addBooleanOption(option => option
+        .setName('public')
+        .setDescription('Whether or not it should be posted publically (non-ephemeral). Default false.')
+        .setRequired(false)),
     ),
   async execute(interaction) {
     const client = interaction.client;
     const subcommand = interaction.options.getSubcommand();
+    const isAdmin = config.users.admins.includes(interaction.user.id);
     logger.debug(`Resolving subcommand: ${subcommand}`);
 
-    if (subcommand === 'start' || subcommand === 'stop') {
+    if (subcommand === 'start' || subcommand === 'stop' || subcommand === 'reset') {
       await interaction.deferReply({ ephemeral: true });
-      if (!config.users.admins.includes(interaction.user.id)) {
+      if (!isAdmin) {
         interaction.followUp({
           content: 'You do not have permission to run this command.',
           ephemeral: true,
@@ -90,7 +103,7 @@ module.exports = {
             ephemeral: true,
           });
         }
-      } else if (subcommand === 'reset' && await SantaManager.started()) {
+      } else if (subcommand === 'reset') {
         await SantaManager.reset();
         interaction.followUp({
           content: 'Secret Santa has been reset.',
@@ -143,6 +156,35 @@ module.exports = {
             ephemeral: true,
           });
         }
+      }
+    } else if (subcommand.endsWith('list')) {
+      if (!isAdmin) {
+        interaction.reply({
+          content: 'You do not have permission to run this command.',
+          ephemeral: true,
+        });
+      } else if (subcommand === 'list') {
+        const santaList = await SantaManager.getAll();
+        const msg = santaList.reduce((list, santa) => `${list}  <@${santa.discordId}>`, '').trim();
+        interaction.reply({
+          content: `Santas Registered: ${msg}`,
+          ephemeral: true,
+        });
+      } else if (subcommand === 'blacklist') {
+        const blacklists = await SantaManager.getBlacklists();
+        const msg = Object.entries(blacklists).reduce((m, [santa, recList]) => `${m}\n<@${santa}>  \u2192  ${recList.map(r => `<@${r}>`).join('  ')}`, '').trim();
+        interaction.reply({
+          content: `Santa \u2192 Blacklisted Receiver\n${msg}`,
+          ephemeral: true,
+        });
+      } else if (subcommand === 'selectedlist') {
+        const selectedPairs = await SantaManager.getSelectedPairs();
+        const msg = Object.entries(selectedPairs).reduce((m, [santa, rec]) => `${m}\n\uD83C\uDF85 <@${santa}> \u27F6 \uD83C\uDF81 <@${rec}>`, '').trim();
+        const isEphemeral = !interaction.options.getBoolean('public');
+        interaction.reply({
+          content: msg,
+          ephemeral: isEphemeral,
+        });
       }
     } else {
       if (!(await SantaManager.isRegistered(interaction.user.id))) {

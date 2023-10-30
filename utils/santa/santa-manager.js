@@ -245,6 +245,16 @@ async function getBlacklists() {
 }
 
 /**
+ * Gets a map of selected pairs.
+ * @returns
+ *  A map of the selected pairs.
+ */
+async function getSelectedPairs() {
+  const santasConfig = await santasDb.get(santasConfigKey);
+  return santasConfig?.selectedPairs;
+}
+
+/**
  *
  * @returns
  *  A string representation of all the santas currently registered.
@@ -276,7 +286,7 @@ async function checkExclusions(santas) {
     const receiverId = santas[j].discordId;
 
     const blkListedReceivers = santasConfig.blacklistedPairs[santaId];
-    if (!blkListedReceivers || blkListedReceivers?.length === 0) {
+    if (!blkListedReceivers?.length) {
       continue;
     }
 
@@ -330,6 +340,7 @@ module.exports = {
   reset,
   getAll,
   getBlacklists,
+  getSelectedPairs,
   toString,
   initSantas,
 };

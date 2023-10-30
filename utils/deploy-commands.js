@@ -10,7 +10,7 @@ if (!args.remove) {
   parseCommands(path.join(__dirname, '../commands/slash'), collection);
 }
 
-const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+const rest = new REST().setToken(process.env.DISCORD_TOKEN);
 const deploy = async (deployAll) => {
   const commands = Array.from(collection.values()).map(c => c.data.toJSON());
   const action = args.remove ? 'delet' : 'deploy';
