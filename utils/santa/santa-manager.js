@@ -193,7 +193,7 @@ function getEmbedForSanta(user, registrationInfo) {
     inline: false,
   }];
   const embed = new EmbedBuilder()
-    .setColor(0xE67E22)
+    .setColor(0x22E669)
     .setAuthor({
       name: `${user.displayName} was selected as your receiver!`,
       iconURL: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`,
@@ -201,6 +201,38 @@ function getEmbedForSanta(user, registrationInfo) {
     .setDescription('Send them a gift for Christmas :)')
     .addFields(fields);
   return embed;
+}
+
+/**
+ * Gets an embed to send to the Secret Santa / Receiver with a custom message.
+ * @param {String} message
+ *  The message to send.
+ * @param {User} user
+ *  The discord user who will send the message, or Santa if undefined.
+ * @returns
+ *  The Embed to send.
+ */
+async function getEmbedForMessage(message, user) {
+  if (!user) {
+    const santasConfig = await santasDb.get(santasConfigKey);
+    const embed = new EmbedBuilder()
+      .setColor(0xE74C3C)
+      .setAuthor({
+        name: 'Santa',
+        iconURL: santasConfig?.santaAvatar,
+      })
+      .setDescription(message);
+    return embed;
+  } else {
+    const embed = new EmbedBuilder()
+      .setColor(0xB377FF)
+      .setAuthor({
+        name: user.displayName,
+        iconURL: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`,
+      })
+      .setDescription(message);
+    return embed;
+  }
 }
 
 /**
@@ -301,6 +333,9 @@ async function checkExclusions(santas) {
   return true;
 }
 
+/**
+ * Loads the default santa config if one doesn't already exist
+ */
 async function initSantas() {
   if (!(await santasDb.get(santasConfigKey))) {
     const santaConfigPath = path.join(__dirname, 'santas-default.jsonc');
@@ -311,7 +346,6 @@ async function initSantas() {
     await santasDb.set(santasConfigKey, santaConf);
   }
 }
-
 
 /**
  * Shuffles an array in-place.
@@ -338,6 +372,7 @@ module.exports = {
   started,
   getChannelId,
   start,
+  getEmbedForMessage,
   reset,
   getAll,
   getBlacklists,

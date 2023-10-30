@@ -216,20 +216,30 @@ module.exports = {
         if (subcommand === 'channel') {
           logger.debug('Sending message to channel...');
           const channel = await client.channels.fetch(await SantaManager.getChannelId());
+          const embed = await SantaManager.getEmbedForMessage(msg);
+          embed.setTimestamp();
           await channel.send({
-            content: msg,
+            embeds: [embed],
           });
         } else if (subcommand === 'santa') {
           logger.debug('Sending message to santa...');
           const channel = await client.users.fetch(await SantaManager.getSanta(interaction.user.id));
+          const embed = await SantaManager.getEmbedForMessage(msg, interaction.user);
+          embed.setFooter({
+            text: 'You can reply using `/ss receiver <msg>`',
+          });
           await channel.send({
-            content: msg,
+            embeds: [embed],
           });
         } else if (subcommand === 'receiver') {
           logger.debug('Sending message to receiver...');
           const channel = await client.users.fetch(await SantaManager.getReceiver(interaction.user.id));
+          const embed = await SantaManager.getEmbedForMessage(msg);
+          embed.setFooter({
+            text: 'You can reply using `/ss santa <msg>`',
+          });
           await channel.send({
-            content: msg,
+            embeds: [embed],
           });
         }
         interaction.followUp({
@@ -238,6 +248,10 @@ module.exports = {
         });
       } catch (error) {
         logger.error(error);
+        interaction.followUp({
+          content: `[ERROR] There was an issue sending your message to ${subcommand}.\nMessage: ${msg}`,
+          ephemeral: true,
+        });
       }
     }
   },
