@@ -161,7 +161,7 @@ module.exports = {
         return;
       }
 
-      interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ ephemeral: true });
       const msg = interaction.options.getString('msg');
       try {
         if (subcommand === 'channel') {
