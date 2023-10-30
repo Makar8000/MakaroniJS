@@ -178,13 +178,20 @@ module.exports = {
           ephemeral: true,
         });
       } else if (subcommand === 'selectedlist') {
-        const selectedPairs = await SantaManager.getSelectedPairs();
-        const msg = Object.entries(selectedPairs).reduce((m, [santa, rec]) => `${m}\n\uD83C\uDF85 <@${santa}> \u27F6 \uD83C\uDF81 <@${rec}>`, '').trim();
-        const isEphemeral = !interaction.options.getBoolean('public');
-        interaction.reply({
-          content: msg,
-          ephemeral: isEphemeral,
-        });
+        if (await SantaManager.started()) {
+          const selectedPairs = await SantaManager.getSelectedPairs();
+          const msg = Object.entries(selectedPairs).reduce((m, [santa, rec]) => `${m}\n\uD83C\uDF85 <@${santa}> \u27F6 \uD83C\uDF81 <@${rec}>`, '').trim();
+          const isEphemeral = !interaction.options.getBoolean('public');
+          interaction.reply({
+            content: msg,
+            ephemeral: isEphemeral,
+          });
+        } else {
+          interaction.reply({
+            content: '[ERROR] The Secret Santa session has not started yet. There are no pairs.',
+            ephemeral: true,
+          });
+        }
       }
     } else {
       if (!(await SantaManager.isRegistered(interaction.user.id))) {
