@@ -1,3 +1,4 @@
+require('json5/lib/register');
 const fs = require('fs');
 const path = require('path');
 const { Client, Collection, GatewayIntentBits, Partials, ActivityType } = require('discord.js');

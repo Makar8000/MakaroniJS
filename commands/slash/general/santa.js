@@ -174,7 +174,7 @@ module.exports = {
         const blacklists = await SantaManager.getBlacklists();
         const msg = Object.entries(blacklists).reduce((m, [santa, recList]) => `${m}\n<@${santa}>  \u2192  ${recList.map(r => `<@${r}>`).join('  ')}`, '').trim();
         interaction.reply({
-          content: `Santa \u2192 Blacklisted Receiver\n${msg}`,
+          content: `Santa \u2192 Banned Receiver\n${msg}`,
           ephemeral: true,
         });
       } else if (subcommand === 'selectedlist') {

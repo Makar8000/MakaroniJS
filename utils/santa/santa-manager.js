@@ -3,6 +3,7 @@ const path = require('path');
 const Keyv = require('keyv');
 const { KeyvFile } = require('keyv-file');
 const { EmbedBuilder } = require('discord.js');
+const JSON5 = require('json5');
 const config = require(path.join(__dirname, '../../config.js'));
 
 const santasDb = new Keyv({
@@ -302,8 +303,8 @@ async function checkExclusions(santas) {
 
 async function initSantas() {
   if (!(await santasDb.get(santasConfigKey))) {
-    const santaConfigPath = path.join(__dirname, 'santas-default.json');
-    const santaConf = JSON.parse(fs.readFileSync(santaConfigPath));
+    const santaConfigPath = path.join(__dirname, 'santas-default.jsonc');
+    const santaConf = JSON5.parse(fs.readFileSync(santaConfigPath));
     if (!santaConf.channelId) {
       santaConf.channelId = config.channels.SECRET_SANTA;
     }
