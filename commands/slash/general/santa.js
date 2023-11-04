@@ -243,8 +243,11 @@ module.exports = {
           });
         }
         interaction.followUp({
-          content: `Successfully sent to ${subcommand}: ${msg}`,
+          content: 'Success',
           ephemeral: true,
+        });
+        interaction.user.send({
+          content: `Sent the following message to ${subcommand}:\n${msg}`,
         });
       } catch (error) {
         logger.error(error);
