@@ -25,7 +25,7 @@
     "@octokit/plugin-throttling": "^8.1.2",
     "@octokit/rest": "^20.0.2",
     "async-lock": "^1.4.0",
-    "discord.js": "^14.14.0",
+    "discord.js": "^14.14.1",
     "dotenv": "^16.3.1",
     "json5": "^2.2.3",
     "keyv": "^4.5.4",
@@ -35,7 +35,7 @@
     "moment-timezone": "^0.5.43",
     "node-fetch": "^2.7.0",
     "node-schedule": "^2.1.1",
-    "openai": "^4.17.4",
+    "openai": "^4.17.5",
     "pino": "^8.16.1",
     "pino-pretty": "^10.2.3"
   },
