@@ -20,7 +20,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@consumet/extensions": "^1.5.2",
+    "@consumet/extensions": "^1.5.4",
     "@octokit/plugin-retry": "^6.0.1",
     "@octokit/plugin-throttling": "^8.1.2",
     "@octokit/rest": "^20.0.2",
@@ -35,8 +35,8 @@
     "moment-timezone": "^0.5.43",
     "node-fetch": "^2.7.0",
     "node-schedule": "^2.1.1",
-    "openai": "^4.17.5",
-    "pino": "^8.16.1",
+    "openai": "^4.19.0",
+    "pino": "^8.16.2",
     "pino-pretty": "^10.2.3"
   },
   "devDependencies": {
