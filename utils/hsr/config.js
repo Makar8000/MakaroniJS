@@ -1,4 +1,9 @@
 const repoConfig = {
+  GITLAB: {
+    OWNER: 'Dimbreath',
+    REPO: 'turnbasedgamedata',
+    BRANCH: 'main',
+  },
   OWNER: 'Dimbreath',
   REPO: 'StarRailData',
   BRANCH: 'master',
