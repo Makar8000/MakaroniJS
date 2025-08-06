@@ -188,6 +188,7 @@ async function cancelInclinationCheck(userId) {
  * @returns
  *  A reference to the scheduled job.
  */
+// eslint-disable-next-line no-unused-vars
 async function scheduleRoleCheck(client, userId, isInitial) {
   // TODO: Implement
   return null;
@@ -200,6 +201,7 @@ async function scheduleRoleCheck(client, userId, isInitial) {
  * @returns
  *  True if cancelation was successful. False otherwise.
  */
+// eslint-disable-next-line no-unused-vars
 async function cancelRoleCheck(userId) {
   // TODO: Implement
   return null;
