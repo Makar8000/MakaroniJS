@@ -20,6 +20,18 @@ module.exports = {
           { name: 'Unsubscribe', value: 0 },
         )
         .setRequired(true)),
+    )
+    .addSubcommand(subcommand => subcommand
+      .setName('b-role')
+      .setDescription('Get notifications when new b___ roles are assigned.')
+      .addIntegerOption(option => option
+        .setName('action')
+        .setDescription('Are you subscribing or unsubscribing?')
+        .addChoices(
+          { name: 'Subscribe', value: 1 },
+          { name: 'Unsubscribe', value: 0 },
+        )
+        .setRequired(true)),
     ),
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
@@ -44,6 +56,35 @@ module.exports = {
         }
       } else {
         const resp = await HSRManager.cancelInclinationCheck(interaction.user.id);
+        if (resp) {
+          await interaction.followUp({
+            content: messages.unsubscribeSuccess,
+            ephemeral: true,
+          });
+        } else {
+          await interaction.followUp({
+            content: messages.unsubscribeError,
+            ephemeral: true,
+          });
+        }
+      }
+    } else if (subcommand === 'b-role') {
+      const subscribe = interaction.options.getInteger('action');
+      if (subscribe) {
+        const resp = await HSRManager.scheduleRoleCheck(client, interaction.user.id);
+        if (resp) {
+          await interaction.followUp({
+            content: messages.subscribeSuccess,
+            ephemeral: true,
+          });
+        } else {
+          await interaction.followUp({
+            content: messages.subscribeError,
+            ephemeral: true,
+          });
+        }
+      } else {
+        const resp = await HSRManager.cancelRoleCheck(interaction.user.id);
         if (resp) {
           await interaction.followUp({
             content: messages.unsubscribeSuccess,

@@ -178,6 +178,34 @@ async function cancelInclinationCheck(userId) {
 }
 
 /**
+ * Schedules a periodic check for b___ role updates.
+ * @param {Client} client
+ *  The discord.js client.
+ * @param {String} userId
+ *  The userId to send the data to.
+ * @param {Boolean} isInitial
+ *  A boolean value representing whether or not this is an initial schedule.
+ * @returns
+ *  A reference to the scheduled job.
+ */
+async function scheduleRoleCheck(client, userId, isInitial) {
+  // TODO: Implement
+  return null;
+}
+
+/**
+ * Cancels the periodic check for b___ role updates.
+ * @param {String} userId
+ *  The userId who is canceling.
+ * @returns
+ *  True if cancelation was successful. False otherwise.
+ */
+async function cancelRoleCheck(userId) {
+  // TODO: Implement
+  return null;
+}
+
+/**
  * Schedule a job with a given jobName
  * @param {Object} jobName
  *  The job name.
