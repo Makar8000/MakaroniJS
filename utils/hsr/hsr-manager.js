@@ -51,7 +51,7 @@ async function loadIncData(sha) {
  *  The discord.js client.
  */
 async function checkForInclinationTypes(client) {
-  if (jobs.get(repoConfig.KEYS.jobName).running) {
+  if (jobs.get(repoConfig.KEYS.INCLINATION.jobName).running) {
     return;
   }
 
@@ -91,7 +91,7 @@ async function checkForInclinationTypes(client) {
 }
 
 async function sendMessageToUsers(client, output) {
-  const users = await hsr.get(repoConfig.KEYS.userList);
+  const users = await hsr.get(repoConfig.KEYS.INCLINATION.userList);
   for (const [userId, enabled] of Object.entries(users)) {
     if (enabled) {
       if (output.length > repoConfig.CHARACTER_LIMIT) {
@@ -123,12 +123,12 @@ async function scheduleInclinationCheck(client, userId, isInitial) {
 
   // Check if this user is already subscribed
   if (!isInitial) {
-    const users = await hsr.get(repoConfig.KEYS.userList);
+    const users = await hsr.get(repoConfig.KEYS.INCLINATION.userList);
     if (users[userId]) {
       return null;
     } else {
       users[userId] = true;
-      await hsr.set(repoConfig.KEYS.userList, users);
+      await hsr.set(repoConfig.KEYS.INCLINATION.userList, users);
     }
   }
 
@@ -142,12 +142,12 @@ async function scheduleInclinationCheck(client, userId, isInitial) {
   }
 
   // Don't run the job again if it's already running
-  const job = jobs.get(repoConfig.KEYS.jobName);
+  const job = jobs.get(repoConfig.KEYS.INCLINATION.jobName);
   if (job) {
     return job;
   }
 
-  return startJob(repoConfig.KEYS.jobName, repoConfig.SCHEDULE, checkForInclinationTypes.bind(null, client));
+  return startJob(repoConfig.KEYS.INCLINATION.jobName, repoConfig.SCHEDULE, checkForInclinationTypes.bind(null, client));
 }
 
 /**
@@ -158,18 +158,18 @@ async function scheduleInclinationCheck(client, userId, isInitial) {
  *  True if cancelation was successful. False otherwise.
  */
 async function cancelInclinationCheck(userId) {
-  if (jobs.has(repoConfig.KEYS.jobName)) {
+  if (jobs.has(repoConfig.KEYS.INCLINATION.jobName)) {
     // Remove user from subscriptions
-    const users = await hsr.get(repoConfig.KEYS.userList);
+    const users = await hsr.get(repoConfig.KEYS.INCLINATION.userList);
     if (users[userId]) {
       delete users[userId];
-      await hsr.set(repoConfig.KEYS.userList, users);
+      await hsr.set(repoConfig.KEYS.INCLINATION.userList, users);
     } else {
       return false;
     }
 
     if (Object.values(users).filter(v => v).length === 0) {
-      return cancelJob(repoConfig.KEYS.jobName);
+      return cancelJob(repoConfig.KEYS.INCLINATION.jobName);
     }
     return true;
   }
@@ -224,9 +224,10 @@ function cancelJob(jobName) {
  *  The discord.js client.
  */
 async function initJobs(client) {
-  let inclinationCheckUsers = await hsr.get(repoConfig.KEYS.userList);
+  // Inclination check
+  let inclinationCheckUsers = await hsr.get(repoConfig.KEYS.INCLINATION.userList);
   if (!inclinationCheckUsers) {
-    await hsr.set(repoConfig.KEYS.userList, {});
+    await hsr.set(repoConfig.KEYS.INCLINATION.userList, {});
     inclinationCheckUsers = {};
   }
   for (const [userId, enabled] of Object.entries(inclinationCheckUsers)) {

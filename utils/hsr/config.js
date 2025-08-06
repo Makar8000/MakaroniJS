@@ -15,8 +15,10 @@ const repoConfig = {
   },
   SCHEDULE: '*/3 * * * *',
   KEYS: {
-    userList: 'inclinationCheckUsers',
-    jobName: 'inclinationTypes',
+    INCLINATION: {
+      userList: 'inclinationCheckUsers',
+      jobName: 'inclinationTypes',
+    },
   },
   CHARACTER_LIMIT: 1500,
 };
