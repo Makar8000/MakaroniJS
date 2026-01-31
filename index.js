@@ -13,8 +13,8 @@ const client = new Client({
   presence: {
     status: 'online',
     activities: [{
-      name: 'music',
-      type: ActivityType.Listening,
+      name: '🌱',
+      type: ActivityType.Playing,
     }],
   },
 });
