@@ -1,9 +1,8 @@
-const path = require('path');
-const { Octokit } = require('@octokit/rest');
-const { throttling } = require('@octokit/plugin-throttling');
-const { retry } = require('@octokit/plugin-retry');
-const { repoConfig } = require(path.join(__dirname, 'config.js'));
-const logger = require(path.join(__dirname, '../logger.js'));
+import { Octokit } from '@octokit/rest';
+import { throttling } from '@octokit/plugin-throttling';
+import { retry } from '@octokit/plugin-retry';
+import { repoConfig } from './config.js';
+import logger from '../logger.js';
 
 const MyOctokit = Octokit.plugin(throttling, retry);
 const octokit = new MyOctokit({
@@ -24,7 +23,7 @@ const octokit = new MyOctokit({
  * @returns
  *  The SHA hash of the latest commit.
  */
-function getLatestCommitHash() {
+export function getLatestCommitHash() {
   return new Promise((resolve, reject) => {
     octokit.rest.repos.getCommit({
       headers: {
@@ -46,7 +45,7 @@ function getLatestCommitHash() {
  * @returns
  *  Information about the latest commit.
  */
-function getLatestCommit() {
+export function getLatestCommit() {
   return new Promise((resolve, reject) => {
     octokit.rest.repos.getCommit({
       owner: repoConfig.OWNER,
@@ -67,7 +66,7 @@ function getLatestCommit() {
  * @returns
  *  Information about the commit.
  */
-function getCommit(sha) {
+export function getCommit(sha) {
   return new Promise((resolve, reject) => {
     octokit.rest.repos.getCommit({
       owner: repoConfig.OWNER,
@@ -90,7 +89,7 @@ function getCommit(sha) {
  * @returns
  *  An object representing the json data downloaded.
  */
-function downloadJsonFile(file, sha) {
+export function downloadJsonFile(file, sha) {
   return new Promise((resolve, reject) => {
     octokit.rest.repos.getContent({
       headers: {
@@ -108,7 +107,7 @@ function downloadJsonFile(file, sha) {
   });
 }
 
-module.exports = {
+export default {
   getLatestCommitHash,
   getLatestCommit,
   getCommit,

@@ -1,9 +1,8 @@
-const { SlashCommandBuilder, PermissionFlagsBits, ActivityType } = require('discord.js');
-const path = require('path');
-const config = require(path.join(__dirname, '../../../config.js'));
-const logger = require(path.join(__dirname, '../../../utils/logger.js'));
+import { SlashCommandBuilder, PermissionFlagsBits, ActivityType } from 'discord.js';
+import config from '../../../config.js';
+import logger from '../../../utils/logger.js';
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName('setpresence')
     .setDescription('Adjust the presence of the bot.')

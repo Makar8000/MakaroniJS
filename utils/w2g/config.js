@@ -1,7 +1,6 @@
-const path = require('path');
-const { EmbedBuilder } = require('discord.js');
-const moment = require('moment');
-const { getDiscordStr } = require(path.join(__dirname, '../common.js'));
+import { EmbedBuilder } from 'discord.js';
+import moment from 'moment';
+import { getDiscordStr } from '../common.js';
 
 const embedOptions = Object.freeze({
   color: 0xFBCD3B,
@@ -147,7 +146,7 @@ const addSuccessAnime = (animeInfo, user) => {
   return createGenericAnime(animeInfo, user, 'has added an episode!');
 };
 
-module.exports = {
+export default {
   createSuccess,
   addSuccess,
   createSuccessAnime,

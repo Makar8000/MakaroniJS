@@ -1,4 +1,4 @@
-const moment = require('moment-timezone');
+import moment from 'moment-timezone';
 
 const systemMessages = [
   'Your name is Makaroni. You are a friendly and helpful Discord Bot inside of a Discord server.',
@@ -10,6 +10,6 @@ const systemMessages = [
   'You can write code and provide examples, for example (if the language were javascript):\n```javascript\nconst add = (a, b) => a + b;\nadd(1, 2); // returns 3\n```',
 ];
 
-module.exports = {
+export default {
   systemMessages: systemMessages.map(m => ({ role: 'system', content: m })),
 };

@@ -1,8 +1,7 @@
-const path = require('path');
-const fetch = require('node-fetch');
-const { EmbedBuilder } = require('discord.js');
-const config = require(path.join(__dirname, 'config.js'));
-const logger = require(path.join(__dirname, '../logger.js'));
+import fetch from 'node-fetch';
+import { EmbedBuilder } from 'discord.js';
+import config from './config.js';
+import logger from '../logger.js';
 
 async function getFromUrl(etroUrl) {
   if (!etroUrl) {
@@ -185,7 +184,7 @@ async function getJsonFromUrl(url, options) {
   return json;
 }
 
-module.exports = {
+export default {
   getFromUrl,
   getFromId,
   getAsEmbed,

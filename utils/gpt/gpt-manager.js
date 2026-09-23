@@ -1,8 +1,7 @@
-const path = require('path');
-const OpenAI = require('openai');
-const { Collection } = require('discord.js');
-const config = require(path.join(__dirname, 'config.js'));
-const logger = require(path.join(__dirname, '../logger.js'));
+import OpenAI from 'openai';
+import { Collection } from 'discord.js';
+import config from './config.js';
+import logger from '../logger.js';
 
 const openai = new OpenAI();
 const prompts = new Collection();
@@ -40,7 +39,7 @@ function deletePromptContext(message) {
  * @param {String} messageId
  *  The message ID that this context is associated with.
  * @param {Array} context
- *  The GTP context array.
+ *  The GPT context array.
  */
 function addPromptContext(messageId, context) {
   prompts.set(messageId, context);
@@ -76,7 +75,7 @@ async function sendPrompt(message, prompt) {
   return null;
 }
 
-module.exports = {
+export default {
   sendPrompt,
   addPromptContext,
 };

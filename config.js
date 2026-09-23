@@ -22,7 +22,7 @@ users.admins = [
   bots.MEDLIONI,
 ];
 
-module.exports = {
+export default {
   guilds,
   channels,
   bots,

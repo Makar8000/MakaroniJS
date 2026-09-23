@@ -1,11 +1,9 @@
-const { SlashCommandBuilder } = require('discord.js');
-const path = require('path');
-const HSRManager = require(path.join(__dirname, '../../../utils/hsr/hsr-manager.js'));
-const logger = require(path.join(__dirname, '../../../utils/logger.js'));
-const { messages } = require(path.join(__dirname, '../../../utils/hsr/config.js'));
+import { SlashCommandBuilder } from 'discord.js';
+import HSRManager from '../../../utils/hsr/hsr-manager.js';
+import logger from '../../../utils/logger.js';
+import { messages } from '../../../utils/hsr/config.js';
 
-
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName('hsr')
     .setDescription('Various tools for HSR.')

@@ -1,5 +1,5 @@
-const Keyv = require('keyv');
-const { KeyvFile } = require('keyv-file');
+import Keyv from 'keyv';
+import { KeyvFile } from 'keyv-file';
 
 /**
  * Parses an string that may contain HTML tags into
@@ -11,7 +11,7 @@ const { KeyvFile } = require('keyv-file');
  * @returns
  *  A discord-friendly string.
  */
-const getDiscordStr = (str, maxLen) => {
+export const getDiscordStr = (str, maxLen) => {
   let newStr = str.trim();
   // Italics
   newStr = newStr.replaceAll(/<\/?i>/g, '_');
@@ -37,7 +37,7 @@ const getDiscordStr = (str, maxLen) => {
  * @returns
  *  The data which is stored at this keyv store
  */
-const getKeyvData = async ({ inputFile, namespace, key }) => {
+export const getKeyvData = async ({ inputFile, namespace, key }) => {
   const data = new Keyv({
     namespace: namespace,
     store: new KeyvFile({
@@ -50,13 +50,13 @@ const getKeyvData = async ({ inputFile, namespace, key }) => {
   }
 
   const ret = {};
-  for await (const [k, v] of data.interator()) {
+  for await (const [k, v] of data.iterator()) {
     ret[k] = v;
   }
   return ret;
 };
 
-module.exports = {
+export default {
   getDiscordStr,
   getKeyvData,
 };

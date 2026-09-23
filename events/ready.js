@@ -1,10 +1,9 @@
-const { Events } = require('discord.js');
-const path = require('path');
-const logger = require(path.join(__dirname, '../utils/logger.js'));
-const ReminderManager = require(path.join(__dirname, '../utils/reminders/reminder-manager.js'));
-const HSRManager = require(path.join(__dirname, '../utils/hsr/hsr-manager.js'));
+import { Events } from 'discord.js';
+import logger from '../utils/logger.js';
+import ReminderManager from '../utils/reminders/reminder-manager.js';
+import HSRManager from '../utils/hsr/hsr-manager.js';
 
-module.exports = {
+export default {
   name: Events.ClientReady,
   once: true,
   execute(client) {

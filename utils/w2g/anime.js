@@ -1,8 +1,7 @@
-const path = require('path');
-const { Collection } = require('discord.js');
-const { META, ANIME } = require('@consumet/extensions');
-const moment = require('moment');
-const logger = require(path.join(__dirname, '../logger.js'));
+import { Collection } from 'discord.js';
+import { META, ANIME } from '@consumet/extensions';
+import moment from 'moment';
+import logger from '../logger.js';
 
 const provider = new ANIME[process.env.ANIME_PROVIDER]();
 const consumet = new META.Anilist(provider);
@@ -90,7 +89,7 @@ async function fetchEpisodeServers(episodeId) {
   return [];
 }
 
-module.exports = {
+export default {
   search,
   fetchAnimeInfo,
   fetchEpisodeServers,

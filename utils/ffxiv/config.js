@@ -84,7 +84,7 @@ const embedOptions = Object.freeze({
   noteName: 'Notes',
 });
 
-module.exports = {
+export default {
   // Etro
   etroApiUrl: 'http://etro.gg/api/gearsets/',
   etroFoodApiUrl: 'https://etro.gg/api/food/',

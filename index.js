@@ -1,11 +1,12 @@
-require('json5/lib/register');
-const fs = require('fs');
-const path = require('path');
-const { Client, Collection, GatewayIntentBits, Partials, ActivityType } = require('discord.js');
-const dotenv = require('dotenv');
+import 'json5/lib/register.js';
+import fs from 'fs';
+import path from 'path';
+import { pathToFileURL } from 'url';
+import { Client, Collection, GatewayIntentBits, Partials, ActivityType } from 'discord.js';
+import dotenv from 'dotenv';
+import logger from './utils/logger.js';
+import parseCommands from './utils/parse-commands.js';
 dotenv.config();
-const logger = require(path.join(__dirname, 'utils/logger.js'));
-const parseCommands = require(path.join(__dirname, 'utils/parse-commands.js'));
 
 const client = new Client({
   intents: Object.values(GatewayIntentBits).filter(v => v !== GatewayIntentBits.GuildBans),
@@ -24,15 +25,16 @@ client.commands = {
   slash: new Collection(),
   message: new Collection(),
 };
-parseCommands(path.join(__dirname, 'commands/slash'), client.commands.slash);
-parseCommands(path.join(__dirname, 'commands/message'), client.commands.message);
+await parseCommands('./commands/slash', client.commands.slash);
+await parseCommands('./commands/message', client.commands.message);
 
 logger.debug('Finished creating map of commands. Registering events...');
-const eventsPath = path.join(__dirname, 'events');
-const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+const eventFiles = fs.readdirSync('./events').filter(file => file.endsWith('.js'));
 for (const file of eventFiles) {
-  const filePath = path.join(eventsPath, file);
-  const event = require(filePath);
+  const absoluteFilePath = path.resolve(path.join('./events', file));
+  const fileUrl = pathToFileURL(absoluteFilePath).href;
+  const eventModule = await import(fileUrl);
+  const event = eventModule.default || eventModule;
   if (event.once) {
     client.once(event.name, (...args) => event.execute(...args));
   } else {

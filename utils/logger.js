@@ -1,7 +1,9 @@
-const pino = require('pino');
-const pretty = require('pino-pretty');
+import pino from 'pino';
+import pretty from 'pino-pretty';
+
 const logger = pino(pretty({
   ignore: 'pid,hostname',
   translateTime: 'SYS:yyyy-mm-dd HH:MM:ss Z',
 }));
-module.exports = logger;
+
+export default logger;

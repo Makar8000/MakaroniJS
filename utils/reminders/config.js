@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+import { EmbedBuilder } from 'discord.js';
 
 const createSuccess = (reminder, user) => {
   const fields = [{ name: 'ID', value: `${reminder.id}`, inline: true }];
@@ -41,7 +41,7 @@ const listSuccess = (reminders, user) => {
   return embed;
 };
 
-module.exports = {
+export default {
   invalidTime: (time) => `The time specified is either invalid or occured in the past:\n<t:${time}:F> (<t:${time}:R>)\n\nThe expected timeformat is Unix timestamp in seconds. You can use <https://hammertime.cyou/> to generate a timestamp.`,
   errorSchedule: (time) => `An error has occured when trying to schedule your reminder:\n<t:${time}:F> (<t:${time}:R>)\n\nPlease make sure your timestamp is correct. The expected timeformat is Unix timestamp in seconds. You can use <https://hammertime.cyou/> to generate a timestamp.`,
   createSuccess,

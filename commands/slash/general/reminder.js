@@ -1,11 +1,10 @@
-const { SlashCommandBuilder } = require('discord.js');
-const path = require('path');
-const moment = require('moment');
-const config = require(path.join(__dirname, '../../../utils/reminders/config'));
-const ReminderManager = require(path.join(__dirname, '../../../utils/reminders/reminder-manager.js'));
-const logger = require(path.join(__dirname, '../../../utils/logger.js'));
+import { SlashCommandBuilder } from 'discord.js';
+import moment from 'moment';
+import config from '../../../utils/reminders/config.js';
+import ReminderManager from '../../../utils/reminders/reminder-manager.js';
+import logger from '../../../utils/logger.js';
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName('reminder')
     .setDescription('Create or manage custom reminders.')

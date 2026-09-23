@@ -1,19 +1,18 @@
-const fs = require('fs');
-const path = require('path');
-const scheduler = require('node-schedule');
-const logger = require(path.join(__dirname, '../logger.js'));
-const { repoConfig } = require(path.join(__dirname, 'config.js'));
-const Keyv = require('keyv');
-const { KeyvFile } = require('keyv-file');
-const { Collection, AttachmentBuilder } = require('discord.js');
-const { downloadJsonFile, getLatestCommitHash, getLatestCommit } = require(path.join(__dirname, 'github-utils.js'));
-const incDataDefaultPath = path.join(__dirname, 'inclination-types.json');
+import fs from 'fs';
+import scheduler from 'node-schedule';
+import Keyv from 'keyv';
+import { KeyvFile } from 'keyv-file';
+import { Collection, AttachmentBuilder } from 'discord.js';
+import logger from '../logger.js';
+import { repoConfig } from './config.js';
+import { downloadJsonFile, getLatestCommitHash, getLatestCommit } from './github-utils.js';
+const incDataDefaultPath = './utils/hsr/inclination-types.json';
 const jobs = new Collection();
 
 const hsr = new Keyv({
   namespace: 'hsr',
   store: new KeyvFile({
-    filename: path.join(__dirname, '../../data/hsr.json'),
+    filename: './data/hsr.json',
   }),
 });
 let curInclHash;
@@ -268,7 +267,7 @@ async function initJobs(client) {
   }
 }
 
-module.exports = {
+export default {
   initJobs,
   scheduleInclinationCheck,
   cancelInclinationCheck,

@@ -1,13 +1,13 @@
-const { REST, Routes, Collection } = require('discord.js');
-const path = require('path');
-const config = require(path.join(__dirname, '../config.js'));
-const logger = require(path.join(__dirname, 'logger.js'));
-const parseCommands = require(path.join(__dirname, 'parse-commands.js'));
-const args = require('minimist')(process.argv.slice(2), { boolean: true });
+import { REST, Routes, Collection } from 'discord.js';
+import minimist from 'minimist';
+import config from '../config.js';
+import logger from './logger.js';
+import parseCommands from './parse-commands.js';
+const args = minimist(process.argv.slice(2), { boolean: true });
 
 const collection = new Collection();
 if (!args.remove) {
-  parseCommands(path.join(__dirname, '../commands/slash'), collection);
+  await parseCommands('./commands/slash', collection);
 }
 
 const rest = new REST().setToken(process.env.DISCORD_TOKEN);

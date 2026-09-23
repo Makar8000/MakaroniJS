@@ -1,18 +1,17 @@
-const path = require('path');
-const scheduler = require('node-schedule');
-const moment = require('moment');
-const logger = require(path.join(__dirname, '../logger.js'));
-const AsyncLock = require('async-lock');
-const Keyv = require('keyv');
-const { KeyvFile } = require('keyv-file');
-const { Collection } = require('discord.js');
+import scheduler from 'node-schedule';
+import moment from 'moment';
+import AsyncLock from 'async-lock';
+import Keyv from 'keyv';
+import { KeyvFile } from 'keyv-file';
+import { Collection } from 'discord.js';
+import logger from '../logger.js';
 const jobs = new Collection();
 
 const lock = new AsyncLock();
 const reminders = new Keyv({
   namespace: 'reminders',
   store: new KeyvFile({
-    filename: path.join(__dirname, '../../data/reminders.json'),
+    filename: './data/reminders.json',
   }),
 });
 
@@ -174,7 +173,7 @@ async function initJobs(client) {
   }
 }
 
-module.exports = {
+export default {
   scheduleReminder,
   getReminders,
   cancelReminder,

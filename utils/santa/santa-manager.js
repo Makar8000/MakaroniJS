@@ -1,15 +1,14 @@
-const fs = require('fs');
-const path = require('path');
-const Keyv = require('keyv');
-const { KeyvFile } = require('keyv-file');
-const { EmbedBuilder } = require('discord.js');
-const JSON5 = require('json5');
-const config = require(path.join(__dirname, '../../config.js'));
+import fs from 'fs';
+import Keyv from 'keyv';
+import { KeyvFile } from 'keyv-file';
+import { EmbedBuilder } from 'discord.js';
+import JSON5 from 'json5';
+import config from '../../config.js';
 
 const santasDb = new Keyv({
   namespace: 'secretsanta',
   store: new KeyvFile({
-    filename: path.join(__dirname, '../../data/santas.json'),
+    filename: './data/santas.json',
   }),
 });
 const santasConfigKey = 'santasConfig';
@@ -338,8 +337,8 @@ async function checkExclusions(santas) {
  */
 async function initSantas() {
   if (!(await santasDb.get(santasConfigKey))) {
-    const santaConfigPath = path.join(__dirname, 'santas-default.jsonc');
-    const santaConf = JSON5.parse(fs.readFileSync(santaConfigPath));
+    const santaConfigPath = './utils/santa/santas-default.jsonc';
+    const santaConf = JSON5.parse(fs.readFileSync(santaConfigPath, 'utf8'));
     if (!santaConf.channelId) {
       santaConf.channelId = config.channels.SECRET_SANTA;
     }
@@ -361,7 +360,7 @@ function shuffle(array) {
   }
 }
 
-module.exports = {
+export default {
   isRegistered,
   addSanta,
   removeSanta,

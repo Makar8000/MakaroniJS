@@ -1,4 +1,4 @@
-const repoConfig = {
+export const repoConfig = {
   GITLAB: {
     OWNER: 'Dimbreath',
     REPO: 'turnbasedgamedata',
@@ -23,12 +23,14 @@ const repoConfig = {
   CHARACTER_LIMIT: 1500,
 };
 
-module.exports = {
+export const messages = {
+  subscribeSuccess: 'You have successfully subscribed to notifications.',
+  subscribeError: 'There was an error when trying to subscribe. Maybe you are already subscribed?',
+  unsubscribeSuccess: 'You have successfully unsubscribed.',
+  unsubscribeError: 'There was an error when trying to unsubscribe. Maybe you are not currently subscribed?',
+};
+
+export default {
   repoConfig,
-  messages: {
-    subscribeSuccess: 'You have successfully subscribed to notifications.',
-    subscribeError: 'There was an error when trying to subscribe. Maybe you are already subscribed?',
-    unsubscribeSuccess: 'You have successfully unsubscribed.',
-    unsubscribeError: 'There was an error when trying to unsubscribe. Maybe you are not currently subscribed?',
-  },
+  messages,
 };

@@ -1,6 +1,5 @@
-const path = require('path');
-const fetch = require('node-fetch');
-const logger = require(path.join(__dirname, '../logger.js'));
+import fetch from 'node-fetch';
+import logger from '../logger.js';
 
 /**
  * Creates a new W2G room.
@@ -102,7 +101,7 @@ function getRoomUrl(streamkey) {
   return `https://w2g.tv/rooms/${streamkey}`;
 }
 
-module.exports = {
+export default {
   createRoom,
   addToRoom,
   getRoomUrl,

@@ -1,12 +1,11 @@
-const path = require('path');
-const GPTManager = require(path.join(__dirname, '../../../utils/gpt/gpt-manager'));
-const logger = require(path.join(__dirname, '../../../utils/logger.js'));
+import GPTManager from '../../../utils/gpt/gpt-manager.js';
+import logger from '../../../utils/logger.js';
 
 const Regexes = {
   msg: /^<@[0-9]+>\s(?<msg>.+)$/,
 };
 
-module.exports = {
+export default {
   data: {
     name: `<@${process.env.DISCORD_USER_ID}>`,
     description: 'Use GPT-3.5 Turbo',

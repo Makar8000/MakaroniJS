@@ -1,9 +1,8 @@
-const { SlashCommandBuilder } = require('discord.js');
-const path = require('path');
-const etro = require(path.join(__dirname, '../../../utils/ffxiv/etro.js'));
-const logger = require(path.join(__dirname, '../../../utils/logger.js'));
+import { SlashCommandBuilder } from 'discord.js';
+import etro from '../../../utils/ffxiv/etro.js';
+import logger from '../../../utils/logger.js';
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName('etro')
     .setDescription('Parse currency required to obtain an etro set.')

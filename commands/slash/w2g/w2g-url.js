@@ -1,10 +1,9 @@
-const { SlashCommandBuilder } = require('discord.js');
-const path = require('path');
-const w2g = require(path.join(__dirname, '../../../utils/w2g/w2g.js'));
-const config = require(path.join(__dirname, '../../../utils/w2g/config.js'));
-const logger = require(path.join(__dirname, '../../../utils/logger.js'));
+import { SlashCommandBuilder } from 'discord.js';
+import w2g from '../../../utils/w2g/w2g.js';
+import config from '../../../utils/w2g/config.js';
+import logger from '../../../utils/logger.js';
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName('w2g')
     .setDescription('Watch something together.')
