@@ -65,7 +65,7 @@ async function sendPrompt(message, prompt) {
 
     const response = await openRouter.chat.send({
       chatRequest: {
-        model: 'openai/gpt-3.5-turbo',
+        model: process.env.OPENROUTER_MODEL,
         messages,
       },
     });

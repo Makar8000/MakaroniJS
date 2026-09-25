@@ -8,12 +8,12 @@ const Regexes = {
 export default {
   data: {
     name: `<@${process.env.DISCORD_USER_ID}>`,
-    description: 'Use GPT-3.5 Turbo',
+    description: 'Use an LLM',
     ignorePrefix: true,
     params: [
       {
         name: 'msg',
-        description: 'The message to feed into GPT 3.5 Turbo',
+        description: 'The message to feed into the LLM',
         isValid: message => message?.content?.trim()?.split(' ')?.length >= 2,
         getValue: message => message.content.trim().match(Regexes.msg)?.groups?.msg,
       },
@@ -33,7 +33,7 @@ export default {
       const followUp = await message.channel.send(latest.content);
       await LLMManager.addPromptContext(followUp.id, respHistory);
     } else {
-      logger.error('Unable to get GTP response.');
+      logger.error('Unable to get LLM response.');
     }
   },
   async error(interaction, error) {
