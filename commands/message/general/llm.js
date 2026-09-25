@@ -1,4 +1,4 @@
-import GPTManager from '../../../utils/gpt/gpt-manager.js';
+import LLMManager from '../../../utils/llm/llm-manager.js';
 import logger from '../../../utils/logger.js';
 
 const Regexes = {
@@ -26,12 +26,12 @@ export default {
       return;
     }
 
-    const respHistory = await GPTManager.sendPrompt(message, msg);
+    const respHistory = await LLMManager.sendPrompt(message, msg);
     const latest = respHistory[respHistory.length - 1];
     if (latest.content) {
       logger.info(`${msg}:\n${latest.content}`);
       const followUp = await message.channel.send(latest.content);
-      await GPTManager.addPromptContext(followUp.id, respHistory);
+      await LLMManager.addPromptContext(followUp.id, respHistory);
     } else {
       logger.error('Unable to get GTP response.');
     }

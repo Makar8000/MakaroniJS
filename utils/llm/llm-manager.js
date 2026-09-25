@@ -1,9 +1,9 @@
-import OpenAI from 'openai';
+import { OpenRouter } from '@openrouter/sdk';
 import { Collection } from 'discord.js';
 import config from './config.js';
 import logger from '../logger.js';
 
-const openai = new OpenAI();
+const openRouter = new OpenRouter();
 const prompts = new Collection();
 
 /**
@@ -11,7 +11,7 @@ const prompts = new Collection();
  * @param {Message} message
  *  The Discord Messsage object to use for finding context.
  * @returns
- *  An array of prompts used for GPT.
+ *  An array of prompts used for the LLM.
  */
 function getPromptContext(message) {
   const messageId = message.reference?.messageId;
@@ -39,20 +39,20 @@ function deletePromptContext(message) {
  * @param {String} messageId
  *  The message ID that this context is associated with.
  * @param {Array} context
- *  The GPT context array.
+ *  The LLM context array.
  */
 function addPromptContext(messageId, context) {
   prompts.set(messageId, context);
 }
 
 /**
- * Sends a prompt using the OpenAI API
+ * Sends a prompt using the OpenRouter API
  * @param {Message} message
  *  The Discord Message object used for building context
  * @param {String} prompt
- *  The prompt for the GPT model
+ *  The prompt for the LLM model
  * @returns
- *  The response from OpenAI
+ *  The response from OpenRouter
  */
 async function sendPrompt(message, prompt) {
   try {
@@ -62,7 +62,14 @@ async function sendPrompt(message, prompt) {
       ...prevMessages,
       newPrompt,
     ];
-    const response = await openai.chat.completions.create({ model: 'gpt-3.5-turbo', messages });
+
+    const response = await openRouter.chat.send({
+      chatRequest: {
+        model: 'openai/gpt-3.5-turbo',
+        messages,
+      },
+    });
+
     const responseMessage = response?.choices?.shift()?.message;
     if (typeof responseMessage === 'object') {
       messages.push(responseMessage);
@@ -70,7 +77,7 @@ async function sendPrompt(message, prompt) {
       return messages;
     }
   } catch (error) {
-    logger.error(`Invalid GPT response. [${error.status}] ${error.message}`);
+    logger.error(`Invalid AI response. ${error.message}`);
   }
   return null;
 }
