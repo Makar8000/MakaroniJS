@@ -114,6 +114,7 @@ async function sendSantaPrompt(prompt, historyContext, rpMode) {
       chatRequest: {
         model: process.env.OPENROUTER_MODEL,
         messages,
+        reasoning: { effort: 'minimal' },
       },
     });
 
