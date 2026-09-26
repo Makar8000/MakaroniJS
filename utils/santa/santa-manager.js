@@ -252,29 +252,19 @@ async function start(client) {
     // Automatically wipe existing pairings right before inserting new ones
     db.prepare('DELETE FROM pairings').run();
 
-    // For getAll (circular chain pairing)
-    for (let i = 0; i < pairingsList.length; i++) {
-      const j = i === (pairingsList.length - 1) ? 0 : i + 1;
-      const stmt = db.prepare('INSERT INTO pairings (santa_id, receiver_id) VALUES (?, ?)');
-      stmt.run(pairingsList[i].discordId, pairingsList[j].discordId);
-    }
-    /* For getAllV3
     for (const pair of pairingsList) {
       const stmt = db.prepare('INSERT INTO pairings (santa_id, receiver_id) VALUES (?, ?)');
       stmt.run(pair.discordId, pair.receiver.discordId);
     }
-    */
     db.prepare("INSERT INTO config (key, value) VALUES ('game_started', 'true') ON CONFLICT(key) DO UPDATE SET value = 'true'").run();
   });
   transaction(santas);
 
-  for (let i = 0; i < santas.length; i++) {
-    const j = i === (santas.length - 1) ? 0 : i + 1;
-    const santa = santas[i].discordId;
-    const santaUser = await client.users.fetch(santa);
-    const receiverUser = await client.users.fetch(santas[j].discordId);
+  for (const santa of santas) {
+    const santaUser = await client.users.fetch(santa.discordId);
+    const receiverUser = await client.users.fetch(santa.receiver.discordId);
     santaUser.send({
-      embeds: [getEmbedForSanta(receiverUser, santas[j])],
+      embeds: [getEmbedForSanta(receiverUser, santa.receiver)],
     });
   }
   return true;
@@ -348,91 +338,32 @@ async function getEmbedForMessage(message, user) {
 }
 
 /**
- * Fully resets the state of the Secret Santa session.
+ * Resets the state of the Secret Santa session.
  */
 async function reset() {
   const transaction = db.transaction(() => {
     db.prepare('DELETE FROM pairings').run();
     db.prepare('DELETE FROM message_history').run();
-    db.prepare('DELETE FROM participants').run();
     db.prepare("INSERT INTO config (key, value) VALUES ('game_started', 'false') ON CONFLICT(key) DO UPDATE SET value = 'false'").run();
   });
   transaction();
 }
 
 /**
- * Gets a valid list of registered santas arranged in a circular pairing chain.
- * Respects all database pair exclusion constraints dynamically.
+ * Gets registered santas. If shouldShuffle is true, every santa is paired
+ * with a receiver (or an empty array if no valid full pairing exists).
  * @param {Boolean} shouldShuffle Whether to randomly arrange participants.
- * @returns {Array} An array of sorted santa objects, or an empty array if impossible.
+ * @returns {Array} Santa objects, each with a .receiver property when shuffled.
  */
 async function getAll(shouldShuffle) {
-  const rows = db.prepare('SELECT discord_id AS discordId, name, address, notes FROM participants').all();
-  if (!shouldShuffle) return rows;
-  if (rows.length < 3) return [];
-
-  // Fetch blacklists into an easy map cache lookup
-  const restrictions = db.prepare('SELECT giver_id, receiver_id FROM restricted_pairs').all();
-  const bannedMap = new Map();
-  for (const { giver_id, receiver_id } of restrictions) {
-    if (!bannedMap.has(giver_id)) bannedMap.set(giver_id, new Set());
-    bannedMap.get(giver_id).add(receiver_id);
-  }
-
-  // Pre-shuffle standard items randomly before solving constraints
-  shuffle(rows);
-
-  const chain = [];
-  const used = new Set();
-
-  // Backtracking Solver to arrange the single-loop circle path safely
-  function solve(index) {
-    if (index === rows.length) {
-      // Circle boundary check: Last person cannot be banned from gifting to the first person
-      const firstId = chain[0].discordId;
-      const lastId = chain[chain.length - 1].discordId;
-      return !(bannedMap.get(lastId)?.has(firstId));
-    }
-
-    for (let i = 0; i < rows.length; i++) {
-      const candidate = rows[i];
-      if (used.has(candidate.discordId)) continue;
-
-      // Constraint check: Verify blacklisted pair rules
-      if (chain.length > 0) {
-        const currentGiver = chain[chain.length - 1].discordId;
-        if (bannedMap.get(currentGiver)?.has(candidate.discordId)) continue;
-      }
-
-      // Step forward
-      chain.push(candidate);
-      used.add(candidate.discordId);
-
-      if (solve(index + 1)) return true;
-
-      // Backtrack out if subsequent steps hit a dead-end wall
-      chain.pop();
-      used.delete(candidate.discordId);
-    }
-    return false;
-  }
-
-  return solve(0) ? chain : [];
-}
-
-/**
- * Gets a valid list of registered santas paired with an assigned receiver.
- * Respects all database pair exclusion constraints dynamically without using a circular chain.
- * @param {Boolean} shouldShuffle Whether to randomly arrange participants.
- * @returns {Array} An array of santa objects where each object contains an assigned .receiver property.
- */
-// eslint-disable-next-line no-unused-vars
-async function getAllV3(shouldShuffle) {
   const santas = db.prepare('SELECT discord_id AS discordId, name, address, notes FROM participants').all();
   if (!shouldShuffle) return santas;
   if (santas.length < 3) return [];
 
-  // 1. Fetch blacklists into a Map cache lookup
+  // the min size of an assignment chain/circle
+  const MIN_LOOP_SIZE = 3;
+
+  // blacklist lookup: giver -> set of receivers they can't have
   const restrictions = db.prepare('SELECT giver_id, receiver_id FROM restricted_pairs').all();
   const bannedMap = new Map();
   for (const { giver_id, receiver_id } of restrictions) {
@@ -440,46 +371,68 @@ async function getAllV3(shouldShuffle) {
     bannedMap.get(giver_id).add(receiver_id);
   }
 
-  // Clone and shuffle a separate pool of receivers
+  // separate shuffled pool of receivers to assign from
   const receivers = [...santas];
   shuffle(receivers);
 
-  // Track only the resulting receiver index per santa during the search so
-  // that backtracking doesn't churn through throwaway spread-copied objects.
+  // helpers for tracking who's assigned to who
+  const santaIndexById = new Map(santas.map((santa, index) => [santa.discordId, index]));
   const assignment = new Array(santas.length);
   const usedReceivers = new Set();
 
-  // 2. Linear matching solver to distribute receivers to santas
+  // Makes sure every gifting loop is at least MIN_LOOP_SIZE long,
+  // otherwise two people could end up gifting directly to each other.
+  function hasOnlyValidLoops() {
+    const visited = new Array(santas.length).fill(false);
+    for (let i = 0; i < santas.length; i++) {
+      if (visited[i]) continue;
+
+      let loopLength = 0;
+      let current = i;
+      while (!visited[current]) {
+        visited[current] = true;
+        loopLength++;
+        const receiverId = receivers[assignment[current]].discordId;
+        current = santaIndexById.get(receiverId);
+      }
+
+      if (loopLength < MIN_LOOP_SIZE) return false;
+    }
+    return true;
+  }
+
+  // Backtracking search to pair each santa with a valid receiver
   function assign(santaIndex) {
-    if (santaIndex === santas.length) return true;
+    if (santaIndex === santas.length) return hasOnlyValidLoops();
 
     const santa = santas[santaIndex];
 
     for (let i = 0; i < receivers.length; i++) {
       const receiver = receivers[i];
 
+      // already taken
       if (usedReceivers.has(receiver.discordId)) continue;
-      // Cannot gift to yourself
+      // no self-gifting
       if (santa.discordId === receiver.discordId) continue;
-      // Blacklist check
+      // blacklisted
       if (bannedMap.get(santa.discordId)?.has(receiver.discordId)) continue;
 
-      // Lock in temporary assignment
       usedReceivers.add(receiver.discordId);
       assignment[santaIndex] = i;
 
+      // try to pair the rest of the santas with this pick locked in
       if (assign(santaIndex + 1)) return true;
 
-      // Backtrack if a later pairing gets stuck
+      // didn't work out, undo and try the next receiver
       usedReceivers.delete(receiver.discordId);
       assignment[santaIndex] = undefined;
     }
+    // no receiver worked for this santa
     return false;
   }
 
+  // start the search from the first santa
   if (assign(0)) {
-    // Materialize the final santa/receiver pairing objects only once, now
-    // that a fully valid assignment has been found.
     return santas.map((santa, index) => ({ ...santa, receiver: receivers[assignment[index]] }));
   }
 
