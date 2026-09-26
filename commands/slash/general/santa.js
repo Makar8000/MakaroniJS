@@ -23,7 +23,16 @@ export default {
       .addStringOption(option => option
         .setName('msg')
         .setDescription('The message to send.')
-        .setRequired(true)),
+        .setRequired(true))
+      .addStringOption(option => option
+        .setName('rp-mode')
+        .setDescription('The rp style to apply to your message.')
+        .setRequired(false)
+        .addChoices(
+          { name: 'Default', value: 'URIANGER' },
+          { name: 'Simple', value: 'SIMPLE' },
+          { name: 'Disabled', value: 'DISABLED' },
+        )),
     )
     .addSubcommand(subcommand => subcommand
       .setName('channel')
@@ -31,7 +40,16 @@ export default {
       .addStringOption(option => option
         .setName('msg')
         .setDescription('The message to send.')
-        .setRequired(true)),
+        .setRequired(true))
+      .addStringOption(option => option
+        .setName('rp-mode')
+        .setDescription('The rp style to apply to your message.')
+        .setRequired(false)
+        .addChoices(
+          { name: 'Default', value: 'URIANGER' },
+          { name: 'Simple', value: 'SIMPLE' },
+          { name: 'Disabled', value: 'DISABLED' },
+        )),
     )
     .addSubcommand(subcommand => subcommand
       .setName('gift')
@@ -283,11 +301,12 @@ export default {
 
       await interaction.deferReply({ ephemeral: true });
       const msg = interaction.options.getString('msg');
+      const rpMode = interaction.options.getString('rp-mode') ?? 'URIANGER';
       try {
         if (subcommand === 'channel') {
           logger.debug('Sending message to channel...');
           const channel = await client.channels.fetch(await SantaManager.getChannelId());
-          const modifiedText = await SantaManager.logAndTransformMessage(interaction.user.id, 'SANTA_TO_PUBLIC', msg);
+          const modifiedText = await SantaManager.logAndTransformMessage(interaction.user.id, 'SANTA_TO_PUBLIC', msg, rpMode);
           const embed = await SantaManager.getEmbedForMessage(modifiedText);
           embed.setTimestamp();
           await channel.send({
@@ -307,7 +326,7 @@ export default {
         } else if (subcommand === 'receiver') {
           logger.debug('Sending message to receiver...');
           const channel = await client.users.fetch(await SantaManager.getReceiver(interaction.user.id));
-          const modifiedText = await SantaManager.logAndTransformMessage(interaction.user.id, 'SANTA_TO_RECEIVER', msg);
+          const modifiedText = await SantaManager.logAndTransformMessage(interaction.user.id, 'SANTA_TO_RECEIVER', msg, rpMode);
           const embed = await SantaManager.getEmbedForMessage(modifiedText);
           embed.setFooter({
             text: 'You can reply using `/ss santa <msg>`',

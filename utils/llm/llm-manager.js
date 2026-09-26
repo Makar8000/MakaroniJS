@@ -83,18 +83,29 @@ async function sendPrompt(message, prompt) {
 }
 
 /**
+ * Maps a Secret Santa RP mode to its corresponding LLM system message set.
+ */
+const rpModeSystemMessages = {
+  URIANGER: 'systemMessagesSantaUrianger',
+  SIMPLE: 'systemMessagesSantaSimple',
+};
+
+/**
  * Sends a secret santa prompt using the OpenRouter API
  * @param {String} prompt
  *  The new message being sent by the Santa.
  * @param {Array} historyContext
  *  The pre-formatted message history context array from the database.
+ * @param {String} rpMode
+ *  The RP mode to use for translation.
  * @returns
  *  The translated string from OpenRouter, or null if it fails.
  */
-async function sendSantaPrompt(prompt, historyContext) {
+async function sendSantaPrompt(prompt, historyContext, rpMode) {
   try {
+    const systemMessagesKey = rpModeSystemMessages[rpMode];
     const messages = [
-      ...config.systemMessagesSantaUrianger,
+      ...config[systemMessagesKey],
       ...historyContext,
       { role: 'user', content: `<SANTA_MESSAGE>${prompt}</SANTA_MESSAGE>` },
     ];

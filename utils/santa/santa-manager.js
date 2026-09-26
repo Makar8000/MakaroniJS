@@ -158,10 +158,17 @@ async function getGiftTrackingList() {
  *  The dynamic routing classification track (e.g. 'SANTA_TO_RECEIVER' or 'SANTA_TO_PUBLIC').
  * @param {String} text
  *  The raw message text to be filtered or translated.
+ * @param {String} rpMode
+ *  The RP mode to use for translation.
  * @returns
  *  The post-processed or translated text string.
  */
-async function transformMessage(santaId, direction, text) {
+async function transformMessage(santaId, direction, text, rpMode) {
+  // Disabled RP mode sends the raw message without any LLM processing.
+  if (!rpMode || rpMode === 'DISABLED') {
+    return text;
+  }
+
   let formattedHistory = [];
 
   // Only fetch history if it is a private direct message to the receiver
@@ -184,7 +191,7 @@ async function transformMessage(santaId, direction, text) {
     });
   }
 
-  const processedText = await LLMManager.sendSantaPrompt(text, formattedHistory);
+  const processedText = await LLMManager.sendSantaPrompt(text, formattedHistory, rpMode);
   return processedText || text;
 }
 
@@ -196,13 +203,15 @@ async function transformMessage(santaId, direction, text) {
  *  The dynamic routing classification track.
  * @param {String} originalText
  *  The original raw content submitted by the user.
+ * @param {String} rpMode
+ *  (Optional) The RP mode to use for translation. Defaults to no rp.
  * @returns
  *  The transformed text if filtered, or the original text string.
  */
-async function logAndTransformMessage(senderId, direction, originalText) {
+async function logAndTransformMessage(senderId, direction, originalText, rpMode) {
   let processedText = originalText;
   if (direction === 'SANTA_TO_RECEIVER' || direction === 'SANTA_TO_PUBLIC') {
-    processedText = await transformMessage(senderId, direction, originalText);
+    processedText = await transformMessage(senderId, direction, originalText, rpMode);
   }
   const stmt = db.prepare(`
     INSERT INTO message_history (sender_id, direction, original_content, processed_content)
