@@ -94,9 +94,9 @@ async function sendPrompt(message, prompt) {
 async function sendSantaPrompt(prompt, historyContext) {
   try {
     const messages = [
-      ...config.systemMessagesSanta,
+      ...config.systemMessagesSantaUrianger,
       ...historyContext,
-      { role: 'user', content: prompt },
+      { role: 'user', content: `<SANTA_MESSAGE>${prompt}</SANTA_MESSAGE>` },
     ];
 
     const response = await openRouter.chat.send({
