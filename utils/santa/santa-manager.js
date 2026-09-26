@@ -69,18 +69,6 @@ async function size() {
 }
 
 /**
- * Sets the receiver for a santa.
- * @param {String} santa
- *  The Discord ID of the santa to set the receiver for.
- * @param {String} receiver
- *  The Discord ID of the receiver.
- */
-async function setReceiver(santa, receiver) {
-  const stmt = db.prepare('INSERT INTO pairings (santa_id, receiver_id) VALUES (?, ?)');
-  stmt.run(santa, receiver);
-}
-
-/**
  * Gets the receiver for a santa.
  * @param {String} santa
  *  The Discord ID of the santa to find the receiver for.
@@ -145,8 +133,8 @@ async function getChannelId() {
 async function updateGiftStatus(santaId, status) {
   const unixTimestamp = Math.floor(Date.now() / 1000);
   const stmt = db.prepare(`
-    UPDATE pairings 
-    SET gift_status = ?, gift_status_timestamp = ? 
+    UPDATE pairings
+    SET gift_status = ?, gift_status_timestamp = ?
     WHERE santa_id = ?
   `);
   const result = stmt.run(status, unixTimestamp, santaId);
@@ -264,7 +252,7 @@ async function start(client) {
     // Automatically wipe existing pairings right before inserting new ones
     db.prepare('DELETE FROM pairings').run();
 
-    // For getAllV1/V2
+    // For getAll (circular chain pairing)
     for (let i = 0; i < pairingsList.length; i++) {
       const j = i === (pairingsList.length - 1) ? 0 : i + 1;
       const stmt = db.prepare('INSERT INTO pairings (santa_id, receiver_id) VALUES (?, ?)');
@@ -373,38 +361,17 @@ async function reset() {
 }
 
 /**
- * Gets a list of users who are registered for Secret Santa.
- * @param {Boolean} shouldShuffle
- * @returns
- *  An array of santa objects currently registered.
- */
-async function getAll(shouldShuffle) {
-  const rows = db.prepare('SELECT discord_id AS discordId, name, address, notes FROM participants').all();
-  if (shouldShuffle) {
-    if (rows.length < 3) {
-      return [];
-    }
-    shuffle(rows);
-    while (!(await checkExclusions(rows))) {
-      shuffle(rows);
-    }
-  }
-  return rows;
-}
-
-/**
  * Gets a valid list of registered santas arranged in a circular pairing chain.
  * Respects all database pair exclusion constraints dynamically.
  * @param {Boolean} shouldShuffle Whether to randomly arrange participants.
  * @returns {Array} An array of sorted santa objects, or an empty array if impossible.
  */
-// eslint-disable-next-line no-unused-vars
-async function getAllV2(shouldShuffle) {
+async function getAll(shouldShuffle) {
   const rows = db.prepare('SELECT discord_id AS discordId, name, address, notes FROM participants').all();
   if (!shouldShuffle) return rows;
   if (rows.length < 3) return [];
 
-  // 1. Fetch blacklists into an easy map cache lookup lookups
+  // Fetch blacklists into an easy map cache lookup
   const restrictions = db.prepare('SELECT giver_id, receiver_id FROM restricted_pairs').all();
   const bannedMap = new Map();
   for (const { giver_id, receiver_id } of restrictions) {
@@ -412,16 +379,13 @@ async function getAllV2(shouldShuffle) {
     bannedMap.get(giver_id).add(receiver_id);
   }
 
-  // 2. Pre-shuffle standard items randomly before solving constraints
-  for (let i = rows.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [rows[i], rows[j]] = [rows[j], rows[i]];
-  }
+  // Pre-shuffle standard items randomly before solving constraints
+  shuffle(rows);
 
   const chain = [];
   const used = new Set();
 
-  // 3. Simple Backtracking Solver to arrange the single-loop circle path safely
+  // Backtracking Solver to arrange the single-loop circle path safely
   function solve(index) {
     if (index === rows.length) {
       // Circle boundary check: Last person cannot be banned from gifting to the first person
@@ -433,9 +397,6 @@ async function getAllV2(shouldShuffle) {
     for (let i = 0; i < rows.length; i++) {
       const candidate = rows[i];
       if (used.has(candidate.discordId)) continue;
-
-      // Rule check: Cannot gift to yourself
-      if (chain.length > 0 && chain[chain.length - 1].discordId === candidate.discordId) continue;
 
       // Constraint check: Verify blacklisted pair rules
       if (chain.length > 0) {
@@ -469,7 +430,7 @@ async function getAllV2(shouldShuffle) {
 async function getAllV3(shouldShuffle) {
   const santas = db.prepare('SELECT discord_id AS discordId, name, address, notes FROM participants').all();
   if (!shouldShuffle) return santas;
-  if (santas.length < 2) return [];
+  if (santas.length < 3) return [];
 
   // 1. Fetch blacklists into a Map cache lookup
   const restrictions = db.prepare('SELECT giver_id, receiver_id FROM restricted_pairs').all();
@@ -481,12 +442,11 @@ async function getAllV3(shouldShuffle) {
 
   // Clone and shuffle a separate pool of receivers
   const receivers = [...santas];
-  for (let i = receivers.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [receivers[i], receivers[j]] = [receivers[j], receivers[i]];
-  }
+  shuffle(receivers);
 
-  const pairings = [];
+  // Track only the resulting receiver index per santa during the search so
+  // that backtracking doesn't churn through throwaway spread-copied objects.
+  const assignment = new Array(santas.length);
   const usedReceivers = new Set();
 
   // 2. Linear matching solver to distribute receivers to santas
@@ -506,19 +466,21 @@ async function getAllV3(shouldShuffle) {
 
       // Lock in temporary assignment
       usedReceivers.add(receiver.discordId);
-      pairings.push({ ...santa, receiver });
+      assignment[santaIndex] = i;
 
       if (assign(santaIndex + 1)) return true;
 
       // Backtrack if a later pairing gets stuck
       usedReceivers.delete(receiver.discordId);
-      pairings.pop();
+      assignment[santaIndex] = undefined;
     }
     return false;
   }
 
   if (assign(0)) {
-    return pairings;
+    // Materialize the final santa/receiver pairing objects only once, now
+    // that a fully valid assignment has been found.
+    return santas.map((santa, index) => ({ ...santa, receiver: receivers[assignment[index]] }));
   }
 
   // Return empty if restrictions make pairings mathematically impossible
@@ -562,41 +524,6 @@ async function getSelectedPairs() {
 async function toString() {
   const rows = db.prepare('SELECT name, discord_id, address, notes FROM participants').all();
   return rows.map(s => `Name: ${s.name}\nDiscord ID: ${s.discord_id}\nAddress: ${s.address}\nNotes: ${s.notes}\n\n`).join('');
-}
-
-/**
- * Checks if the array provided is valid (blacklists are not violated).
- * @param {Array} santas
- *  The array of santa objects.
- * @returns
- *  True if this array is sorted in a way that respects blacklists.
- *  False if this array sorting conflicts with blacklists.
- */
-async function checkExclusions(santas) {
-  if (santas.length < 2) {
-    return true;
-  }
-
-  const rows = db.prepare('SELECT giver_id, receiver_id FROM restricted_pairs').all();
-  const restrictionMap = new Map();
-  for (const row of rows) {
-    if (!restrictionMap.has(row.giver_id)) {
-      restrictionMap.set(row.giver_id, new Set());
-    }
-    restrictionMap.get(row.giver_id).add(row.receiver_id);
-  }
-
-  for (let i = 0; i < santas.length; i++) {
-    const j = i === santas.length - 1 ? 0 : i + 1;
-    const santaId = santas[i].discordId;
-    const receiverId = santas[j].discordId;
-
-    if (restrictionMap.has(santaId) && restrictionMap.get(santaId).has(receiverId)) {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 /**
@@ -660,7 +587,6 @@ export default {
   addSanta,
   removeSanta,
   size,
-  setReceiver,
   getReceiver,
   getSanta,
   started,
