@@ -1,17 +1,14 @@
 import fs from 'fs';
-import Keyv from 'keyv';
-import { KeyvFile } from 'keyv-file';
+import path from 'path';
+import Database from 'better-sqlite3';
 import { EmbedBuilder } from 'discord.js';
+import LLMManager from '../llm/llm-manager.js';
 import JSON5 from 'json5';
 import config from '../../config.js';
 
-const santasDb = new Keyv({
-  namespace: 'secretsanta',
-  store: new KeyvFile({
-    filename: './data/santas.json',
-  }),
-});
-const santasConfigKey = 'santasConfig';
+const db = new Database('./data/secretsanta.db');
+db.pragma('foreign_keys = ON');
+/* eslint-disable quotes */
 
 /**
  * Checks if this user is registered with Secret Santa.
@@ -22,8 +19,8 @@ const santasConfigKey = 'santasConfig';
  *  False otherwise.
  */
 async function isRegistered(user) {
-  const santasConfig = await santasDb.get(santasConfigKey);
-  return !!santasConfig.santas[user];
+  const stmt = db.prepare('SELECT 1 FROM participants WHERE discord_id = ?');
+  return !!stmt.get(user);
 }
 
 /**
@@ -35,11 +32,17 @@ async function isRegistered(user) {
  *  False if modifying an existing santa.
  */
 async function addSanta(santa) {
-  const santasConfig = await santasDb.get(santasConfigKey);
-  const ret = santasConfig.santas[santa.discordId];
-  santasConfig.santas[santa.discordId] = santa;
-  await santasDb.set(santasConfigKey, santasConfig);
-  return !ret;
+  const existing = await isRegistered(santa.discordId);
+  const stmt = db.prepare(`
+    INSERT INTO participants (discord_id, name, address, notes)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(discord_id) DO UPDATE SET
+      name = excluded.name,
+      address = excluded.address,
+      notes = excluded.notes
+  `);
+  stmt.run(santa.discordId, santa.name, santa.address, santa.notes);
+  return !existing;
 }
 
 /**
@@ -51,11 +54,9 @@ async function addSanta(santa) {
  *  False if this santa didn't exist.
  */
 async function removeSanta(santa) {
-  const santasConfig = await santasDb.get(santasConfigKey);
-  const ret = santasConfig.santas[santa];
-  delete santasConfig.santas[santa];
-  await santasDb.set(santasConfigKey, santasConfig);
-  return !!ret;
+  const stmt = db.prepare('DELETE FROM participants WHERE discord_id = ?');
+  const result = stmt.run(santa);
+  return result.changes > 0;
 }
 
 /**
@@ -63,11 +64,8 @@ async function removeSanta(santa) {
  * @returns The number of registered santas.
  */
 async function size() {
-  const santasConfig = await santasDb.get(santasConfigKey);
-  if (!santasConfig?.santas) {
-    return 0;
-  }
-  return Object.keys(santasConfig?.santas).length;
+  const row = db.prepare('SELECT COUNT(*) AS count FROM participants').get();
+  return row.count;
 }
 
 /**
@@ -78,9 +76,8 @@ async function size() {
  *  The Discord ID of the receiver.
  */
 async function setReceiver(santa, receiver) {
-  const santasConfig = await santasDb.get(santasConfigKey);
-  santasConfig.selectedPairs[santa] = receiver;
-  await santasDb.set(santasConfigKey, santasConfig);
+  const stmt = db.prepare('INSERT INTO pairings (santa_id, receiver_id) VALUES (?, ?)');
+  stmt.run(santa, receiver);
 }
 
 /**
@@ -92,11 +89,11 @@ async function setReceiver(santa, receiver) {
  *  Returns undefined if the game is not started OR if this santa doesn't have a receiver.
  */
 async function getReceiver(santa) {
-  const santasConfig = await santasDb.get(santasConfigKey);
-  if (!santasConfig?.gameStarted) {
+  if (!(await started())) {
     return undefined;
   }
-  return santasConfig?.selectedPairs[santa];
+  const row = db.prepare('SELECT receiver_id FROM pairings WHERE santa_id = ?').get(santa);
+  return row?.receiver_id;
 }
 
 /**
@@ -107,17 +104,11 @@ async function getReceiver(santa) {
  *  The Discord ID of the santa for this receiver.
  */
 async function getSanta(receiver) {
-  const santasConfig = await santasDb.get(santasConfigKey);
-  if (!santasConfig?.gameStarted) {
+  if (!(await started())) {
     return undefined;
   }
-
-  for (const [santa, rec] of Object.entries(santasConfig?.selectedPairs)) {
-    if (rec === receiver) {
-      return santa;
-    }
-  }
-  return undefined;
+  const row = db.prepare('SELECT santa_id FROM pairings WHERE receiver_id = ?').get(receiver);
+  return row?.santa_id;
 }
 
 /**
@@ -127,8 +118,8 @@ async function getSanta(receiver) {
  *  False if this Secret Santa session is NOT started.
  */
 async function started() {
-  const santasConfig = await santasDb.get(santasConfigKey);
-  return santasConfig?.gameStarted;
+  const row = db.prepare("SELECT value FROM config WHERE key = 'game_started'").get();
+  return row?.value === 'true';
 }
 
 /**
@@ -137,8 +128,125 @@ async function started() {
  *  The Discord ID of the channel used for this Secret Santa session.
  */
 async function getChannelId() {
-  const santasConfig = await santasDb.get(santasConfigKey);
-  return santasConfig?.channelId;
+  const row = db.prepare("SELECT value FROM config WHERE key = 'channel_id'").get();
+  return row?.value;
+}
+
+/**
+ * Updates the active gift tracking milestone status.
+ * @param {String} santaId
+ *  The Discord ID of the santa to update the status for.
+ * @param {String} status
+ *  The new milestone status string (e.g. 'NOT_SENT', 'SENT', 'DELIVERED').
+ * @returns
+ *  True if the update was successful.
+ *  False otherwise.
+ */
+async function updateGiftStatus(santaId, status) {
+  const unixTimestamp = Math.floor(Date.now() / 1000);
+  const stmt = db.prepare(`
+    UPDATE pairings 
+    SET gift_status = ?, gift_status_timestamp = ? 
+    WHERE santa_id = ?
+  `);
+  const result = stmt.run(status, unixTimestamp, santaId);
+  return result.changes > 0;
+}
+
+/**
+ * Gets a tracking list of all gift statuses and timestamps.
+ * @returns {Array} An array of pairing tracking objects.
+ */
+async function getGiftTrackingList() {
+  const rows = db.prepare('SELECT receiver_id, gift_status, gift_status_timestamp FROM pairings').all();
+  return rows;
+}
+
+/**
+ * Transforms the provided message using conversation history context if applicable.
+ * @param {String} santaId
+ *  The Discord ID of the santa sending the message.
+ * @param {String} direction
+ *  The dynamic routing classification track (e.g. 'SANTA_TO_RECEIVER' or 'SANTA_TO_PUBLIC').
+ * @param {String} text
+ *  The raw message text to be filtered or translated.
+ * @returns
+ *  The post-processed or translated text string.
+ */
+async function transformMessage(santaId, direction, text) {
+  let formattedHistory = [];
+
+  // Only fetch history if it is a private direct message to the receiver
+  if (direction === 'SANTA_TO_RECEIVER') {
+    const history = await getMessageHistory(santaId);
+
+    // Format the database history records into standard LLM conversation objects
+    formattedHistory = history.map(msg => {
+      if (msg.direction === 'SANTA_TO_RECEIVER') {
+        return {
+          role: 'assistant',
+          content: msg.processed_content || msg.original_content,
+        };
+      } else {
+        return {
+          role: 'user',
+          content: msg.original_content,
+        };
+      }
+    });
+  }
+
+  const processedText = await LLMManager.sendSantaPrompt(text, formattedHistory);
+  return processedText || text;
+}
+
+/**
+ * Logs a message to the database and applies a transformation filter if applicable.
+ * @param {String} senderId
+ *  The Discord ID of the user sending the message.
+ * @param {String} direction
+ *  The dynamic routing classification track.
+ * @param {String} originalText
+ *  The original raw content submitted by the user.
+ * @returns
+ *  The transformed text if filtered, or the original text string.
+ */
+async function logAndTransformMessage(senderId, direction, originalText) {
+  let processedText = originalText;
+  if (direction === 'SANTA_TO_RECEIVER' || direction === 'SANTA_TO_PUBLIC') {
+    processedText = await transformMessage(senderId, direction, originalText);
+  }
+  const stmt = db.prepare(`
+    INSERT INTO message_history (sender_id, direction, original_content, processed_content)
+    VALUES (?, ?, ?, ?)
+  `);
+  stmt.run(senderId, direction, originalText, processedText);
+  return processedText;
+}
+
+/**
+ * Gets the recent message history context window between two matched participants.
+ * @param {String} santaId
+ *  The Discord ID of the santa whose matching history should be retrieved.
+ * @param {Number} limit
+ *  The maximum number of recent messages to look up. Defaults to -1 (no limit).
+ * @returns
+ *  An array of history transaction ledger entries sorted chronologically.
+ */
+async function getMessageHistory(santaId, limit = -1) {
+  const stmt = db.prepare(`
+    SELECT h.direction, h.original_content, h.processed_content, h.timestamp 
+    FROM message_history h
+    JOIN pairings p ON p.santa_id = ?
+    WHERE 
+      -- Matches messages sent by the Santa
+      (h.sender_id = p.santa_id AND h.direction = 'SANTA_TO_RECEIVER')
+      -- Matches messages sent by the Receiver
+      OR (h.sender_id = p.receiver_id AND h.direction = 'RECEIVER_TO_SANTA')
+    ORDER BY h.timestamp DESC
+    LIMIT ?
+  `);
+  return stmt.all(santaId, limit).reverse();
 }
 
 /**
@@ -151,20 +259,36 @@ async function start(client) {
   if (!santas.length) {
     return false;
   }
+
+  const transaction = db.transaction((pairingsList) => {
+    // Automatically wipe existing pairings right before inserting new ones
+    db.prepare('DELETE FROM pairings').run();
+
+    // For getAllV1/V2
+    for (let i = 0; i < pairingsList.length; i++) {
+      const j = i === (pairingsList.length - 1) ? 0 : i + 1;
+      const stmt = db.prepare('INSERT INTO pairings (santa_id, receiver_id) VALUES (?, ?)');
+      stmt.run(pairingsList[i].discordId, pairingsList[j].discordId);
+    }
+    /* For getAllV3
+    for (const pair of pairingsList) {
+      const stmt = db.prepare('INSERT INTO pairings (santa_id, receiver_id) VALUES (?, ?)');
+      stmt.run(pair.discordId, pair.receiver.discordId);
+    }
+    */
+    db.prepare("INSERT INTO config (key, value) VALUES ('game_started', 'true') ON CONFLICT(key) DO UPDATE SET value = 'true'").run();
+  });
+  transaction(santas);
+
   for (let i = 0; i < santas.length; i++) {
     const j = i === (santas.length - 1) ? 0 : i + 1;
     const santa = santas[i].discordId;
-    const receiver = santas[j].discordId;
-    await setReceiver(santa, receiver);
     const santaUser = await client.users.fetch(santa);
-    const receiverUser = await client.users.fetch(receiver);
+    const receiverUser = await client.users.fetch(santas[j].discordId);
     santaUser.send({
       embeds: [getEmbedForSanta(receiverUser, santas[j])],
     });
   }
-  const santasConfig = await santasDb.get(santasConfigKey);
-  santasConfig.gameStarted = true;
-  await santasDb.set(santasConfigKey, santasConfig);
   return true;
 }
 
@@ -213,12 +337,13 @@ function getEmbedForSanta(user, registrationInfo) {
  */
 async function getEmbedForMessage(message, user) {
   if (!user) {
-    const santasConfig = await santasDb.get(santasConfigKey);
+    const row = db.prepare("SELECT value FROM config WHERE key = 'santa_avatar'").get();
+    const avatarUrl = row?.value || 'http://up.makar.pw/VGtuy7N3.png';
     const embed = new EmbedBuilder()
       .setColor(0xE74C3C)
       .setAuthor({
         name: 'Santa',
-        iconURL: santasConfig?.santaAvatar,
+        iconURL: avatarUrl,
       })
       .setDescription(message);
     return embed;
@@ -238,11 +363,8 @@ async function getEmbedForMessage(message, user) {
  * Fully resets the state of the Secret Santa session.
  */
 async function reset() {
-  const santasConfig = await santasDb.get(santasConfigKey);
-  santasConfig.santas = {};
-  santasConfig.selectedPairs = {};
-  santasConfig.gameStarted = false;
-  await santasDb.set(santasConfigKey, santasConfig);
+  db.prepare('DELETE FROM pairings').run();
+  db.prepare("INSERT INTO config (key, value) VALUES ('game_started', 'false') ON CONFLICT(key) DO UPDATE SET value = 'false'").run();
 }
 
 /**
@@ -252,18 +374,150 @@ async function reset() {
  *  An array of santa objects currently registered.
  */
 async function getAll(shouldShuffle) {
-  const santasConfig = await santasDb.get(santasConfigKey);
-  const ret = Object.values(santasConfig.santas);
+  const rows = db.prepare('SELECT discord_id AS discordId, name, address, notes FROM participants').all();
   if (shouldShuffle) {
-    if (ret.length < 3) {
+    if (rows.length < 3) {
       return [];
     }
-    shuffle(ret);
-    while (!(await checkExclusions(ret))) {
-      shuffle(ret);
+    shuffle(rows);
+    while (!(await checkExclusions(rows))) {
+      shuffle(rows);
     }
   }
-  return ret;
+  return rows;
+}
+
+/**
+ * Gets a valid list of registered santas arranged in a circular pairing chain.
+ * Respects all database pair exclusion constraints dynamically.
+ * @param {Boolean} shouldShuffle Whether to randomly arrange participants.
+ * @returns {Array} An array of sorted santa objects, or an empty array if impossible.
+ */
+// eslint-disable-next-line no-unused-vars
+async function getAllV2(shouldShuffle) {
+  const rows = db.prepare('SELECT discord_id AS discordId, name, address, notes FROM participants').all();
+  if (!shouldShuffle) return rows;
+  if (rows.length < 3) return [];
+
+  // 1. Fetch blacklists into an easy map cache lookup lookups
+  const restrictions = db.prepare('SELECT giver_id, receiver_id FROM restricted_pairs').all();
+  const bannedMap = new Map();
+  for (const { giver_id, receiver_id } of restrictions) {
+    if (!bannedMap.has(giver_id)) bannedMap.set(giver_id, new Set());
+    bannedMap.get(giver_id).add(receiver_id);
+  }
+
+  // 2. Pre-shuffle standard items randomly before solving constraints
+  for (let i = rows.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [rows[i], rows[j]] = [rows[j], rows[i]];
+  }
+
+  const chain = [];
+  const used = new Set();
+
+  // 3. Simple Backtracking Solver to arrange the single-loop circle path safely
+  function solve(index) {
+    if (index === rows.length) {
+      // Circle boundary check: Last person cannot be banned from gifting to the first person
+      const firstId = chain[0].discordId;
+      const lastId = chain[chain.length - 1].discordId;
+      return !(bannedMap.get(lastId)?.has(firstId));
+    }
+
+    for (let i = 0; i < rows.length; i++) {
+      const candidate = rows[i];
+      if (used.has(candidate.discordId)) continue;
+
+      // Rule check: Cannot gift to yourself
+      if (chain.length > 0 && chain[chain.length - 1].discordId === candidate.discordId) continue;
+
+      // Constraint check: Verify blacklisted pair rules
+      if (chain.length > 0) {
+        const currentGiver = chain[chain.length - 1].discordId;
+        if (bannedMap.get(currentGiver)?.has(candidate.discordId)) continue;
+      }
+
+      // Step forward
+      chain.push(candidate);
+      used.add(candidate.discordId);
+
+      if (solve(index + 1)) return true;
+
+      // Backtrack out if subsequent steps hit a dead-end wall
+      chain.pop();
+      used.delete(candidate.discordId);
+    }
+    return false;
+  }
+
+  return solve(0) ? chain : [];
+}
+
+/**
+ * Gets a valid list of registered santas paired with an assigned receiver.
+ * Respects all database pair exclusion constraints dynamically without using a circular chain.
+ * @param {Boolean} shouldShuffle Whether to randomly arrange participants.
+ * @returns {Array} An array of santa objects where each object contains an assigned .receiver property.
+ */
+// eslint-disable-next-line no-unused-vars
+async function getAllV3(shouldShuffle) {
+  const santas = db.prepare('SELECT discord_id AS discordId, name, address, notes FROM participants').all();
+  if (!shouldShuffle) return santas;
+  if (santas.length < 2) return [];
+
+  // 1. Fetch blacklists into a Map cache lookup
+  const restrictions = db.prepare('SELECT giver_id, receiver_id FROM restricted_pairs').all();
+  const bannedMap = new Map();
+  for (const { giver_id, receiver_id } of restrictions) {
+    if (!bannedMap.has(giver_id)) bannedMap.set(giver_id, new Set());
+    bannedMap.get(giver_id).add(receiver_id);
+  }
+
+  // Clone and shuffle a separate pool of receivers
+  const receivers = [...santas];
+  for (let i = receivers.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [receivers[i], receivers[j]] = [receivers[j], receivers[i]];
+  }
+
+  const pairings = [];
+  const usedReceivers = new Set();
+
+  // 2. Linear matching solver to distribute receivers to santas
+  function assign(santaIndex) {
+    if (santaIndex === santas.length) return true;
+
+    const santa = santas[santaIndex];
+
+    for (let i = 0; i < receivers.length; i++) {
+      const receiver = receivers[i];
+
+      if (usedReceivers.has(receiver.discordId)) continue;
+      // Cannot gift to yourself
+      if (santa.discordId === receiver.discordId) continue;
+      // Blacklist check
+      if (bannedMap.get(santa.discordId)?.has(receiver.discordId)) continue;
+
+      // Lock in temporary assignment
+      usedReceivers.add(receiver.discordId);
+      pairings.push({ ...santa, receiver });
+
+      if (assign(santaIndex + 1)) return true;
+
+      // Backtrack if a later pairing gets stuck
+      usedReceivers.delete(receiver.discordId);
+      pairings.pop();
+    }
+    return false;
+  }
+
+  if (assign(0)) {
+    return pairings;
+  }
+
+  // Return empty if restrictions make pairings mathematically impossible
+  return [];
 }
 
 /**
@@ -272,8 +526,14 @@ async function getAll(shouldShuffle) {
  *  A map of the blacklisted pairs.
  */
 async function getBlacklists() {
-  const santasConfig = await santasDb.get(santasConfigKey);
-  return santasConfig?.blacklistedPairs;
+  const rows = db.prepare('SELECT giver_id, receiver_id FROM restricted_pairs').all();
+  return rows.reduce((map, row) => {
+    if (!map[row.giver_id]) {
+      map[row.giver_id] = [];
+    }
+    map[row.giver_id].push(row.receiver_id);
+    return map;
+  }, {});
 }
 
 /**
@@ -282,8 +542,11 @@ async function getBlacklists() {
  *  A map of the selected pairs.
  */
 async function getSelectedPairs() {
-  const santasConfig = await santasDb.get(santasConfigKey);
-  return santasConfig?.selectedPairs;
+  const rows = db.prepare('SELECT santa_id, receiver_id FROM pairings').all();
+  return rows.reduce((map, row) => {
+    map[row.santa_id] = row.receiver_id;
+    return map;
+  }, {});
 }
 
 /**
@@ -292,9 +555,9 @@ async function getSelectedPairs() {
  *  A string representation of all the santas currently registered.
  */
 async function toString() {
-  const santasConfig = await santasDb.get(santasConfigKey);
-  return Object.values(santasConfig.santas).reduce((ret, s) => {
-    ret += `Name: ${s.name}\nDiscord ID: ${s.discordId}\nAddress: ${s.address}\nNotes: ${s.notes}\n\n`;
+  const rows = db.prepare('SELECT name, discord_id, address, notes FROM participants').all();
+  return rows.reduce((ret, s) => {
+    ret += `Name: ${s.name}\nDiscord ID: ${s.discord_id}\nAddress: ${s.address}\nNotes: ${s.notes}\n\n`;
   }, '');
 }
 
@@ -311,21 +574,22 @@ async function checkExclusions(santas) {
     return true;
   }
 
-  const santasConfig = await santasDb.get(santasConfigKey);
+  const rows = db.prepare('SELECT giver_id, receiver_id FROM restricted_pairs').all();
+  const restrictionMap = new Map();
+  for (const row of rows) {
+    if (!restrictionMap.has(row.giver_id)) {
+      restrictionMap.set(row.giver_id, new Set());
+    }
+    restrictionMap.get(row.giver_id).add(row.receiver_id);
+  }
+
   for (let i = 0; i < santas.length; i++) {
     const j = i === santas.length - 1 ? 0 : i + 1;
     const santaId = santas[i].discordId;
     const receiverId = santas[j].discordId;
 
-    const blkListedReceivers = santasConfig.blacklistedPairs[santaId];
-    if (!blkListedReceivers?.length) {
-      continue;
-    }
-
-    for (const blkListedReceiver of blkListedReceivers) {
-      if (receiverId === blkListedReceiver) {
-        return false;
-      }
+    if (restrictionMap.has(santaId) && restrictionMap.get(santaId).has(receiverId)) {
+      return false;
     }
   }
 
@@ -336,13 +600,41 @@ async function checkExclusions(santas) {
  * Loads the default santa config if one doesn't already exist
  */
 async function initSantas() {
-  if (!(await santasDb.get(santasConfigKey))) {
-    const santaConfigPath = './utils/santa/santas-default.jsonc';
-    const santaConf = JSON5.parse(fs.readFileSync(santaConfigPath, 'utf8'));
-    if (!santaConf.channelId) {
-      santaConf.channelId = config.channels.SECRET_SANTA;
+  try {
+    const schemaPath = path.resolve('./utils/santa/ss-schema.sql');
+    if (fs.existsSync(schemaPath)) {
+      const schema = fs.readFileSync(schemaPath, 'utf8');
+      db.exec(schema);
     }
-    await santasDb.set(santasConfigKey, santaConf);
+
+    // Validate whether or not the DB has been initialized
+    const hasInitializedConfig = db.prepare("SELECT 1 FROM config WHERE key = 'game_started'").get();
+    if (!hasInitializedConfig) {
+      // Set default config
+      const santaConfigPath = './utils/santa/santas-default.jsonc';
+      if (fs.existsSync(santaConfigPath)) {
+        const santaConf = JSON5.parse(fs.readFileSync(santaConfigPath, 'utf8'));
+        if (!santaConf.santaAvatar) {
+          throw new Error('No Santa avatar defined');
+        }
+        if (santaConf.blacklistedPairs) {
+          const insertPair = db.prepare('INSERT OR IGNORE INTO restricted_pairs (giver_id, receiver_id) VALUES (?, ?)');
+          for (const [giver, receivers] of Object.entries(santaConf.blacklistedPairs)) {
+            for (const receiver of receivers) {
+              insertPair.run(giver, receiver);
+            }
+          }
+        }
+
+        db.prepare("INSERT INTO config (key, value) VALUES ('game_started', 'false')").run();
+        db.prepare("INSERT INTO config (key, value) VALUES ('channel_id', ?)").run(config.channels.SECRET_SANTA);
+        db.prepare("INSERT INTO config (key, value) VALUES ('santa_avatar', ?)").run(santaConf.santaAvatar);
+      } else {
+        throw new Error('No default config');
+      }
+    }
+  } catch (err) {
+    console.error('Failed to init database setup execution structure:', err);
   }
 }
 
@@ -370,6 +662,10 @@ export default {
   getSanta,
   started,
   getChannelId,
+  updateGiftStatus,
+  getGiftTrackingList,
+  logAndTransformMessage,
+  getMessageHistory,
   start,
   getEmbedForMessage,
   reset,

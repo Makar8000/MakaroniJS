@@ -82,7 +82,42 @@ async function sendPrompt(message, prompt) {
   return null;
 }
 
+/**
+ * Sends a secret santa prompt using the OpenRouter API
+ * @param {String} prompt
+ *  The new message being sent by the Santa.
+ * @param {Array} historyContext
+ *  The pre-formatted message history context array from the database.
+ * @returns
+ *  The translated string from OpenRouter, or null if it fails.
+ */
+async function sendSantaPrompt(prompt, historyContext) {
+  try {
+    const messages = [
+      ...config.systemMessagesSanta,
+      ...historyContext,
+      { role: 'user', content: prompt },
+    ];
+
+    const response = await openRouter.chat.send({
+      chatRequest: {
+        model: process.env.OPENROUTER_MODEL,
+        messages,
+      },
+    });
+
+    const responseMessage = response?.choices?.[0]?.message;
+    if (responseMessage?.content) {
+      return responseMessage.content.trim();
+    }
+  } catch (error) {
+    logger.error(`Invalid Secret Santa AI response. ${error.message}`);
+  }
+  return null;
+}
+
 export default {
   sendPrompt,
+  sendSantaPrompt,
   addPromptContext,
 };

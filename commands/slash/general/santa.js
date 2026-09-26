@@ -34,6 +34,19 @@ export default {
         .setRequired(true)),
     )
     .addSubcommand(subcommand => subcommand
+      .setName('gift')
+      .setDescription('Update your gift status milestone tracking details.')
+      .addStringOption(option => option
+        .setName('status')
+        .setDescription('The milestone state.')
+        .setRequired(true)
+        .addChoices(
+          { name: 'Not Sent', value: 'NOT_SENT' },
+          { name: 'Sent', value: 'SENT' },
+          { name: 'Delivered', value: 'DELIVERED' },
+        )),
+    )
+    .addSubcommand(subcommand => subcommand
       .setName('register')
       .setDescription('Register for Secret Santa or update your registration information.')
       .addStringOption(option => option
@@ -70,6 +83,14 @@ export default {
       .setDescription('Gets a list of banned Secret Santa pairs. Admin-only.'),
     )
     .addSubcommand(subcommand => subcommand
+      .setName('giftlist')
+      .setDescription('Gets a list of gift shipment statuses. Admin-only.')
+      .addBooleanOption(option => option
+        .setName('public')
+        .setDescription('Whether or not it should be posted publically (non-ephemeral). Default false.')
+        .setRequired(false)),
+    )
+    .addSubcommand(subcommand => subcommand
       .setName('selectedlist')
       .setDescription('Gets a list of selected Secret Santa pairs. Admin-only.')
       .addBooleanOption(option => option
@@ -83,7 +104,7 @@ export default {
     const isAdmin = config.users.admins.includes(interaction.user.id);
     logger.debug(`Resolving subcommand: ${subcommand}`);
 
-    if (subcommand === 'start' || subcommand === 'stop' || subcommand === 'reset') {
+    if (subcommand === 'start' || subcommand === 'reset') {
       await interaction.deferReply({ ephemeral: true });
       if (!isAdmin) {
         interaction.followUp({
@@ -192,6 +213,56 @@ export default {
             ephemeral: true,
           });
         }
+      } else if (subcommand === 'giftlist') {
+        if (await SantaManager.started()) {
+          const giftTrackingList = await SantaManager.getGiftTrackingList();
+          const friendlyStatus = {
+            'NOT_SENT': 'Not Sent ❌',
+            'SENT': 'Sent 📦',
+            'DELIVERED': 'Delivered 🎁',
+          };
+          const msg = giftTrackingList.reduce((m, item) => `${m}\n<@${item.receiver_id}>'s Santa Gift Status: **${friendlyStatus[item.gift_status]}** (<t:${item.gift_status_timestamp}:F>)`, '').trim();
+          const isEphemeral = !interaction.options.getBoolean('public');
+          interaction.reply({
+            content: msg || 'No tracking records found.',
+            ephemeral: isEphemeral,
+          });
+        } else {
+          interaction.reply({
+            content: '[ERROR] The Secret Santa session has not started yet.',
+            ephemeral: true,
+          });
+        }
+      }
+    } else if (subcommand === 'gift') {
+      if (!(await SantaManager.isRegistered(interaction.user.id))) {
+        interaction.reply({
+          content: '[ERROR] You are not registered.',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      if (!(await SantaManager.started())) {
+        interaction.reply({
+          content: '[ERROR] The Secret Santa session has not started yet.',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      const targetStatus = interaction.options.getString('status');
+      const updated = await SantaManager.updateGiftStatus(interaction.user.id, targetStatus);
+      if (updated) {
+        interaction.reply({
+          content: `Successfully updated tracking gift status to: **${targetStatus}**`,
+          ephemeral: true,
+        });
+      } else {
+        interaction.reply({
+          content: '[ERROR] Gift milestone update failed.',
+          ephemeral: true,
+        });
       }
     } else {
       if (!(await SantaManager.isRegistered(interaction.user.id))) {
@@ -216,7 +287,8 @@ export default {
         if (subcommand === 'channel') {
           logger.debug('Sending message to channel...');
           const channel = await client.channels.fetch(await SantaManager.getChannelId());
-          const embed = await SantaManager.getEmbedForMessage(msg);
+          const modifiedText = await SantaManager.logAndTransformMessage(interaction.user.id, 'SANTA_TO_PUBLIC', msg);
+          const embed = await SantaManager.getEmbedForMessage(modifiedText);
           embed.setTimestamp();
           await channel.send({
             embeds: [embed],
@@ -231,10 +303,12 @@ export default {
           await channel.send({
             embeds: [embed],
           });
+          await SantaManager.logAndTransformMessage(interaction.user.id, 'RECEIVER_TO_SANTA', msg);
         } else if (subcommand === 'receiver') {
           logger.debug('Sending message to receiver...');
           const channel = await client.users.fetch(await SantaManager.getReceiver(interaction.user.id));
-          const embed = await SantaManager.getEmbedForMessage(msg);
+          const modifiedText = await SantaManager.logAndTransformMessage(interaction.user.id, 'SANTA_TO_RECEIVER', msg);
+          const embed = await SantaManager.getEmbedForMessage(modifiedText);
           embed.setFooter({
             text: 'You can reply using `/ss santa <msg>`',
           });

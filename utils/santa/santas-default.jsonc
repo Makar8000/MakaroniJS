@@ -1,7 +1,5 @@
 {
   "santaAvatar": "https://makar.s-ul.eu/VGtuy7N3.png",
-  "santas": {},
-  "selectedPairs": {},
   "blacklistedPairs": {
     // Lico
     "91683230192791552": [
@@ -40,6 +38,5 @@
     "156979280851501056": [
       "374995210591272960" // Venus 2023
     ]
-  },
-  "gameStarted": false
+  }
 }
