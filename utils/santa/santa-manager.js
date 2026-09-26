@@ -338,7 +338,7 @@ function getEmbedForSanta(user, registrationInfo) {
 async function getEmbedForMessage(message, user) {
   if (!user) {
     const row = db.prepare("SELECT value FROM config WHERE key = 'santa_avatar'").get();
-    const avatarUrl = row?.value || 'http://up.makar.pw/VGtuy7N3.png';
+    const avatarUrl = row?.value;
     const embed = new EmbedBuilder()
       .setColor(0xE74C3C)
       .setAuthor({
@@ -363,8 +363,13 @@ async function getEmbedForMessage(message, user) {
  * Fully resets the state of the Secret Santa session.
  */
 async function reset() {
-  db.prepare('DELETE FROM pairings').run();
-  db.prepare("INSERT INTO config (key, value) VALUES ('game_started', 'false') ON CONFLICT(key) DO UPDATE SET value = 'false'").run();
+  const transaction = db.transaction(() => {
+    db.prepare('DELETE FROM pairings').run();
+    db.prepare('DELETE FROM message_history').run();
+    db.prepare('DELETE FROM participants').run();
+    db.prepare("INSERT INTO config (key, value) VALUES ('game_started', 'false') ON CONFLICT(key) DO UPDATE SET value = 'false'").run();
+  });
+  transaction();
 }
 
 /**
@@ -556,9 +561,7 @@ async function getSelectedPairs() {
  */
 async function toString() {
   const rows = db.prepare('SELECT name, discord_id, address, notes FROM participants').all();
-  return rows.reduce((ret, s) => {
-    ret += `Name: ${s.name}\nDiscord ID: ${s.discord_id}\nAddress: ${s.address}\nNotes: ${s.notes}\n\n`;
-  }, '');
+  return rows.map(s => `Name: ${s.name}\nDiscord ID: ${s.discord_id}\nAddress: ${s.address}\nNotes: ${s.notes}\n\n`).join('');
 }
 
 /**

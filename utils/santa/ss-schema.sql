@@ -24,9 +24,9 @@ CREATE TABLE IF NOT EXISTS pairings (
         'DELIVERED'
       )
     ),
-    gift_status_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (santa_id) REFERENCES participants (discord_id),
-    FOREIGN KEY (receiver_id) REFERENCES participants (discord_id),
+    gift_status_timestamp INTEGER DEFAULT (strftime('%s', 'now')),
+    FOREIGN KEY (santa_id) REFERENCES participants (discord_id) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_id) REFERENCES participants (discord_id) ON DELETE CASCADE,
     CHECK (santa_id <> receiver_id)
 );
 
@@ -51,6 +51,6 @@ CREATE TABLE IF NOT EXISTS message_history (
     original_content TEXT NOT NULL,
     processed_content TEXT,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (sender_id) REFERENCES participants (discord_id)
+    FOREIGN KEY (sender_id) REFERENCES participants (discord_id) ON DELETE CASCADE
 );
 
