@@ -301,6 +301,7 @@ export default {
 
       await interaction.deferReply({ ephemeral: true });
       const msg = interaction.options.getString('msg');
+      let contentOutput = `Sent the following message to ${subcommand}:\n`;
       const rpMode = interaction.options.getString('rp-mode') ?? 'URIANGER';
       try {
         if (subcommand === 'channel') {
@@ -312,6 +313,7 @@ export default {
           await channel.send({
             embeds: [embed],
           });
+          contentOutput += `${modifiedText}\n\nOriginal:\n${msg}`;
         } else if (subcommand === 'santa') {
           logger.debug('Sending message to santa...');
           const channel = await client.users.fetch(await SantaManager.getSanta(interaction.user.id));
@@ -323,6 +325,7 @@ export default {
             embeds: [embed],
           });
           await SantaManager.logAndTransformMessage(interaction.user.id, 'RECEIVER_TO_SANTA', msg);
+          contentOutput += `${msg}`;
         } else if (subcommand === 'receiver') {
           logger.debug('Sending message to receiver...');
           const channel = await client.users.fetch(await SantaManager.getReceiver(interaction.user.id));
@@ -334,13 +337,14 @@ export default {
           await channel.send({
             embeds: [embed],
           });
+          contentOutput += `${modifiedText}\n\nOriginal:\n${msg}`;
         }
         interaction.followUp({
           content: 'Success',
           ephemeral: true,
         });
         interaction.user.send({
-          content: `Sent the following message to ${subcommand}:\n${msg}`,
+          content: contentOutput,
         });
       } catch (error) {
         logger.error(error);

@@ -8,7 +8,7 @@ const guilds = {
 };
 
 const channels = {
-  SECRET_SANTA: '1168246929503813652',
+  SECRET_SANTA: '1553609566032498688',
 };
 
 const users = {
