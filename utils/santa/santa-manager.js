@@ -155,7 +155,7 @@ async function getGiftTrackingList() {
  * @param {String} santaId
  *  The Discord ID of the santa sending the message.
  * @param {String} direction
- *  The dynamic routing classification track (e.g. 'SANTA_TO_RECEIVER' or 'SANTA_TO_PUBLIC').
+ *  The dynamic routing classification track ('SANTA_TO_RECEIVER', 'SANTA_TO_PUBLIC', 'SANTA_TO_USER', or 'USER_TO_SANTA').
  * @param {String} text
  *  The raw message text to be filtered or translated.
  * @param {String} rpMode
@@ -210,7 +210,7 @@ async function transformMessage(santaId, direction, text, rpMode) {
  */
 async function logAndTransformMessage(senderId, direction, originalText, rpMode) {
   let processedText = originalText;
-  if (direction === 'SANTA_TO_RECEIVER' || direction === 'SANTA_TO_PUBLIC') {
+  if (direction === 'SANTA_TO_RECEIVER' || direction === 'SANTA_TO_PUBLIC' || direction === 'SANTA_TO_USER') {
     processedText = await transformMessage(senderId, direction, originalText, rpMode);
   }
   const stmt = db.prepare(`
@@ -317,19 +317,20 @@ function getEmbedForSanta(user, registrationInfo) {
  * Gets an embed to send to the Secret Santa / Receiver with a custom message.
  * @param {String} message
  *  The message to send.
- * @param {User} user
+ * @param {User | String} user
  *  The discord user who will send the message, or Santa if undefined.
+ *  Can also be a string if the Santa is for someone else
  * @returns
  *  The Embed to send.
  */
 async function getEmbedForMessage(message, user) {
-  if (!user) {
+  if (!user || typeof user === 'string') {
     const row = db.prepare("SELECT value FROM config WHERE key = 'santa_avatar'").get();
     const avatarUrl = row?.value;
     const embed = new EmbedBuilder()
       .setColor(0xE74C3C)
       .setAuthor({
-        name: 'Santa',
+        name: `${typeof user === 'string' ? user + '\'s ' : ''}${'Santa'}`,
         iconURL: avatarUrl,
       })
       .setDescription(message);

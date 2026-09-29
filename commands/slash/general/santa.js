@@ -52,6 +52,27 @@ export default {
         )),
     )
     .addSubcommand(subcommand => subcommand
+      .setName('user')
+      .setDescription('Send a message to any Santa anonymously.')
+      .addUserOption(option => option
+        .setName('name')
+        .setDescription('The user to send the message to.')
+        .setRequired(true))
+      .addStringOption(option => option
+        .setName('msg')
+        .setDescription('The message to send.')
+        .setRequired(true))
+      .addStringOption(option => option
+        .setName('rp-mode')
+        .setDescription('The rp style to apply to your message.')
+        .setRequired(false)
+        .addChoices(
+          { name: 'Default', value: 'URIANGER' },
+          { name: 'Simple', value: 'SIMPLE' },
+          { name: 'Disabled', value: 'DISABLED' },
+        )),
+    )
+    .addSubcommand(subcommand => subcommand
       .setName('gift')
       .setDescription('Update your gift status milestone tracking details.')
       .addStringOption(option => option
@@ -335,6 +356,26 @@ export default {
             text: 'You can reply using `/ss santa <msg>`',
           });
           await channel.send({
+            embeds: [embed],
+          });
+          contentOutput += `${modifiedText}\n\nOriginal:\n${msg}`;
+        } else if (subcommand === 'user') {
+          logger.debug('Sending message to user...');
+          const user = interaction.options.getUser('name');
+          if (!user || user.id === interaction.user.id || !(await SantaManager.isRegistered(user.id))) {
+            interaction.followUp({
+              content: '[ERROR] The specified user is not valid for this command.',
+              ephemeral: true,
+            });
+            return;
+          }
+          const receiver = await client.users.fetch(await SantaManager.getReceiver(interaction.user.id));
+          const modifiedText = await SantaManager.logAndTransformMessage(interaction.user.id, 'SANTA_TO_USER', msg, rpMode);
+          const embed = await SantaManager.getEmbedForMessage(modifiedText, receiver.displayName);
+          embed.setFooter({
+            text: 'You can reply using `/ss user <msg>`',
+          });
+          await user.send({
             embeds: [embed],
           });
           contentOutput += `${modifiedText}\n\nOriginal:\n${msg}`;

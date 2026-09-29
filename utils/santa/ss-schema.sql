@@ -45,7 +45,9 @@ CREATE TABLE IF NOT EXISTS message_history (
       direction IN (
         'SANTA_TO_RECEIVER',
         'RECEIVER_TO_SANTA',
-        'SANTA_TO_PUBLIC'
+        'SANTA_TO_PUBLIC',
+        'SANTA_TO_USER',
+        'USER_TO_SANTA'
       )
     ),
     original_content TEXT NOT NULL,
