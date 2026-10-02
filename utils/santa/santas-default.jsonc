@@ -1,5 +1,6 @@
 {
   "santaAvatar": "https://makar.s-ul.eu/l3m98q3X.png",
+  "defaultRpMode": "URIANGER",
   "blacklistedPairs": {
     // Lico
     "91683230192791552": [
@@ -37,11 +38,16 @@
     ],
     // Millie
     "179732698229768192": [
-      "85924030661533696" // Makar 2023
+      "85924030661533696", // Makar 2023
+      "374995210591272960" // Venus (shipping)
     ],
     // Xaiah
     "156979280851501056": [
       "374995210591272960" // Venus 2023
+    ],
+    // Dazlark
+    "155454598742671360": [
+      "374995210591272960" // Venus (shipping)
     ]
   }
 }

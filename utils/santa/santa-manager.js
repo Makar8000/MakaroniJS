@@ -24,6 +24,18 @@ async function isRegistered(user) {
 }
 
 /**
+ * Gets a registered participant's details.
+ * @param {String} discordId
+ *  The Discord ID of the participant to look up.
+ * @returns
+ *  The participant's { discordId, name, address, notes }, or undefined if not registered.
+ */
+async function getParticipant(discordId) {
+  const row = db.prepare('SELECT discord_id AS discordId, name, address, notes FROM participants WHERE discord_id = ?').get(discordId);
+  return row;
+}
+
+/**
  * Registers a new user for Secret Santa.
  * @param {Object} santa
  *  The santa object to add.
@@ -121,6 +133,28 @@ async function getChannelId() {
 }
 
 /**
+ * Gets whether users are allowed to pick their own rp-mode on compose/reply modals.
+ * @returns
+ *  True if rp-mode selection is enabled.
+ *  False if the default rp-mode should always be used instead.
+ */
+async function isRpModeSelectionAllowed() {
+  const row = db.prepare("SELECT value FROM config WHERE key = 'rp_mode_selection_allowed'").get();
+  return row?.value === 'true';
+}
+
+/**
+ * Gets the rp-mode to use when rp-mode selection is disabled, or as the preselected default when
+ * it is enabled.
+ * @returns
+ *  The default rp style ('URIANGER', 'SIMPLE', or 'DISABLED').
+ */
+async function getDefaultRpMode() {
+  const row = db.prepare("SELECT value FROM config WHERE key = 'default_rp_mode'").get();
+  return row?.value;
+}
+
+/**
  * Updates the active gift tracking milestone status.
  * @param {String} santaId
  *  The Discord ID of the santa to update the status for.
@@ -150,12 +184,17 @@ async function getGiftTrackingList() {
   return rows;
 }
 
+// Directions whose conversation history should be fetched for LLM context in transformMessage.
+const DIRECTIONS_WITH_HISTORY = new Set(['SANTA_TO_RECEIVER', 'SANTA_TO_USER']);
+
 /**
  * Transforms the provided message using conversation history context if applicable.
- * @param {String} santaId
- *  The Discord ID of the santa sending the message.
+ * @param {String} senderId
+ *  The Discord ID of the user sending the message.
+ * @param {String} targetId
+ *  The Discord ID of the message's recipient.
  * @param {String} direction
- *  The dynamic routing classification track ('SANTA_TO_RECEIVER', 'SANTA_TO_PUBLIC', 'SANTA_TO_USER', or 'USER_TO_SANTA').
+ *  The direction of the message ('SANTA_TO_RECEIVER', 'SANTA_TO_PUBLIC', or 'SANTA_TO_USER').
  * @param {String} text
  *  The raw message text to be filtered or translated.
  * @param {String} rpMode
@@ -163,7 +202,7 @@ async function getGiftTrackingList() {
  * @returns
  *  The post-processed or translated text string.
  */
-async function transformMessage(santaId, direction, text, rpMode) {
+async function transformMessage(senderId, targetId, direction, text, rpMode) {
   // Disabled RP mode sends the raw message without any LLM processing.
   if (!rpMode || rpMode === 'DISABLED') {
     return text;
@@ -171,24 +210,15 @@ async function transformMessage(santaId, direction, text, rpMode) {
 
   let formattedHistory = [];
 
-  // Only fetch history if it is a private direct message to the receiver
-  if (direction === 'SANTA_TO_RECEIVER') {
-    const history = await getMessageHistory(santaId);
+  if (DIRECTIONS_WITH_HISTORY.has(direction)) {
+    const history = await getConversationHistory(senderId, targetId);
 
-    // Format the database history records into standard LLM conversation objects
-    formattedHistory = history.map(msg => {
-      if (msg.direction === 'SANTA_TO_RECEIVER') {
-        return {
-          role: 'assistant',
-          content: msg.processed_content || msg.original_content,
-        };
-      } else {
-        return {
-          role: 'user',
-          content: msg.original_content,
-        };
-      }
-    });
+    // Format the database history records into standard LLM conversation objects.
+    // Sender is 'assistant' role, Target is 'user' role
+    formattedHistory = history.map(msg => ({
+      role: msg.sender_id === senderId ? 'assistant' : 'user',
+      content: (msg.sender_id === senderId ? msg.processed_content : null) || msg.original_content,
+    }));
   }
 
   const processedText = await LLMManager.sendSantaPrompt(text, formattedHistory, rpMode);
@@ -199,8 +229,10 @@ async function transformMessage(santaId, direction, text, rpMode) {
  * Logs a message to the database and applies a transformation filter if applicable.
  * @param {String} senderId
  *  The Discord ID of the user sending the message.
+ * @param {String} targetId
+ *  The Discord ID of the message's recipient.
  * @param {String} direction
- *  The dynamic routing classification track.
+ *  The direction of the message.
  * @param {String} originalText
  *  The original raw content submitted by the user.
  * @param {String} rpMode
@@ -208,42 +240,41 @@ async function transformMessage(santaId, direction, text, rpMode) {
  * @returns
  *  The transformed text if filtered, or the original text string.
  */
-async function logAndTransformMessage(senderId, direction, originalText, rpMode) {
+async function logAndTransformMessage(senderId, targetId, direction, originalText, rpMode) {
   let processedText = originalText;
   if (direction === 'SANTA_TO_RECEIVER' || direction === 'SANTA_TO_PUBLIC' || direction === 'SANTA_TO_USER') {
-    processedText = await transformMessage(senderId, direction, originalText, rpMode);
+    processedText = await transformMessage(senderId, targetId, direction, originalText, rpMode);
   }
   const stmt = db.prepare(`
-    INSERT INTO message_history (sender_id, direction, original_content, processed_content)
+    INSERT INTO message_history (sender_id, target_id, original_content, processed_content)
     VALUES (?, ?, ?, ?)
   `);
-  stmt.run(senderId, direction, originalText, processedText);
+  stmt.run(senderId, targetId, originalText, processedText);
   return processedText;
 }
 
 /**
- * Gets the recent message history context window between two matched participants.
- * @param {String} santaId
- *  The Discord ID of the santa whose matching history should be retrieved.
+ * Gets the message history for a 2-party conversation thread between sender and target.
+ * @param {String} senderId
+ *  The Discord ID of the user whose conversation thread should be retrieved.
+ * @param {String} targetId
+ *  The Discord ID of the other participant in the conversation thread.
  * @param {Number} limit
  *  The maximum number of recent messages to look up. Defaults to -1 (no limit).
  * @returns
  *  An array of history transaction ledger entries sorted chronologically.
  */
-async function getMessageHistory(santaId, limit = -1) {
+async function getConversationHistory(senderId, targetId, limit = -1) {
   const stmt = db.prepare(`
-    SELECT h.direction, h.original_content, h.processed_content, h.timestamp 
-    FROM message_history h
-    JOIN pairings p ON p.santa_id = ?
-    WHERE 
-      -- Matches messages sent by the Santa
-      (h.sender_id = p.santa_id AND h.direction = 'SANTA_TO_RECEIVER')
-      -- Matches messages sent by the Receiver
-      OR (h.sender_id = p.receiver_id AND h.direction = 'RECEIVER_TO_SANTA')
-    ORDER BY h.timestamp DESC
+    SELECT sender_id, target_id, original_content, processed_content, timestamp
+    FROM message_history
+    WHERE
+      (sender_id = ? AND target_id = ?)
+      OR (sender_id = ? AND target_id = ?)
+    ORDER BY timestamp DESC
     LIMIT ?
   `);
-  return stmt.all(santaId, limit).reverse();
+  return stmt.all(senderId, targetId, targetId, senderId, limit).reverse();
 }
 
 /**
@@ -510,6 +541,9 @@ async function initSantas() {
         if (!santaConf.santaAvatar) {
           throw new Error('No Santa avatar defined');
         }
+        if (!santaConf.defaultRpMode) {
+          throw new Error('No default rp-mode defined');
+        }
         if (santaConf.blacklistedPairs) {
           const insertPair = db.prepare('INSERT OR IGNORE INTO restricted_pairs (giver_id, receiver_id) VALUES (?, ?)');
           for (const [giver, receivers] of Object.entries(santaConf.blacklistedPairs)) {
@@ -522,6 +556,8 @@ async function initSantas() {
         db.prepare("INSERT INTO config (key, value) VALUES ('game_started', 'false')").run();
         db.prepare("INSERT INTO config (key, value) VALUES ('channel_id', ?)").run(config.channels.SECRET_SANTA);
         db.prepare("INSERT INTO config (key, value) VALUES ('santa_avatar', ?)").run(santaConf.santaAvatar);
+        db.prepare("INSERT INTO config (key, value) VALUES ('rp_mode_selection_allowed', 'false')").run();
+        db.prepare("INSERT INTO config (key, value) VALUES ('default_rp_mode', ?)").run(santaConf.defaultRpMode);
       } else {
         throw new Error('No default config');
       }
@@ -529,6 +565,35 @@ async function initSantas() {
   } catch (err) {
     console.error('Failed to init database setup execution structure:', err);
   }
+}
+
+/**
+ * Gets all config keys and values currently stored.
+ * @returns
+ *  A map of config key -> value.
+ */
+async function getConfig() {
+  const rows = db.prepare('SELECT key, value FROM config').all();
+  return rows.reduce((map, row) => {
+    map[row.key] = row.value;
+    return map;
+  }, {});
+}
+
+/**
+ * Updates the value of an existing config key.
+ * @param {String} key
+ *  The config key to update.
+ * @param {String} value
+ *  The new value to set for this key.
+ * @returns
+ *  True if the key existed and was updated.
+ *  False if the key does not exist.
+ */
+async function updateConfig(key, value) {
+  const stmt = db.prepare('UPDATE config SET value = ? WHERE key = ?');
+  const result = stmt.run(value, key);
+  return result.changes > 0;
 }
 
 /**
@@ -547,6 +612,7 @@ function shuffle(array) {
 
 export default {
   isRegistered,
+  getParticipant,
   addSanta,
   removeSanta,
   size,
@@ -554,10 +620,11 @@ export default {
   getSanta,
   started,
   getChannelId,
+  isRpModeSelectionAllowed,
+  getDefaultRpMode,
   updateGiftStatus,
   getGiftTrackingList,
   logAndTransformMessage,
-  getMessageHistory,
   start,
   getEmbedForMessage,
   reset,
@@ -566,4 +633,6 @@ export default {
   getSelectedPairs,
   toString,
   initSantas,
+  getConfig,
+  updateConfig,
 };

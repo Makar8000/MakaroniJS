@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import SantaManager from '../../../utils/santa/santa-manager.js';
-import config from '../../../config.js';
+import SantaMessaging from '../../../utils/santa/santa-interactions.js';
 import logger from '../../../utils/logger.js';
 
 SantaManager.initSantas();
@@ -10,67 +10,8 @@ export default {
     .setName('ss')
     .setDescription('Secret Santa commands.')
     .addSubcommand(subcommand => subcommand
-      .setName('santa')
-      .setDescription('Send a message to your Secret Santa.')
-      .addStringOption(option => option
-        .setName('msg')
-        .setDescription('The message to send.')
-        .setRequired(true)),
-    )
-    .addSubcommand(subcommand => subcommand
-      .setName('receiver')
-      .setDescription('Send a message to your receiver anonymously.')
-      .addStringOption(option => option
-        .setName('msg')
-        .setDescription('The message to send.')
-        .setRequired(true))
-      .addStringOption(option => option
-        .setName('rp-mode')
-        .setDescription('The rp style to apply to your message.')
-        .setRequired(false)
-        .addChoices(
-          { name: 'Default', value: 'URIANGER' },
-          { name: 'Simple', value: 'SIMPLE' },
-          { name: 'Disabled', value: 'DISABLED' },
-        )),
-    )
-    .addSubcommand(subcommand => subcommand
-      .setName('channel')
-      .setDescription('Send a message to the Secret Santa channel anonymously.')
-      .addStringOption(option => option
-        .setName('msg')
-        .setDescription('The message to send.')
-        .setRequired(true))
-      .addStringOption(option => option
-        .setName('rp-mode')
-        .setDescription('The rp style to apply to your message.')
-        .setRequired(false)
-        .addChoices(
-          { name: 'Default', value: 'URIANGER' },
-          { name: 'Simple', value: 'SIMPLE' },
-          { name: 'Disabled', value: 'DISABLED' },
-        )),
-    )
-    .addSubcommand(subcommand => subcommand
-      .setName('user')
-      .setDescription('Send a message to any Santa anonymously.')
-      .addUserOption(option => option
-        .setName('name')
-        .setDescription('The user to send the message to.')
-        .setRequired(true))
-      .addStringOption(option => option
-        .setName('msg')
-        .setDescription('The message to send.')
-        .setRequired(true))
-      .addStringOption(option => option
-        .setName('rp-mode')
-        .setDescription('The rp style to apply to your message.')
-        .setRequired(false)
-        .addChoices(
-          { name: 'Default', value: 'URIANGER' },
-          { name: 'Simple', value: 'SIMPLE' },
-          { name: 'Disabled', value: 'DISABLED' },
-        )),
+      .setName('msg')
+      .setDescription('Compose a Secret Santa message.'),
     )
     .addSubcommand(subcommand => subcommand
       .setName('gift')
@@ -80,104 +21,26 @@ export default {
         .setDescription('The milestone state.')
         .setRequired(true)
         .addChoices(
-          { name: 'Not Sent', value: 'NOT_SENT' },
-          { name: 'Sent', value: 'SENT' },
-          { name: 'Delivered', value: 'DELIVERED' },
+          { name: '❌ Not Sent', value: 'NOT_SENT' },
+          { name: '📦 Sent', value: 'SENT' },
+          { name: '🎁 Delivered', value: 'DELIVERED' },
         )),
     )
     .addSubcommand(subcommand => subcommand
       .setName('register')
-      .setDescription('Register for Secret Santa or update your registration information.')
-      .addStringOption(option => option
-        .setName('name')
-        .setDescription('The name that you want to appear on your package(s).')
-        .setRequired(true))
-      .addStringOption(option => option
-        .setName('address')
-        .setDescription('The address your santa needs to send the package(s) to.')
-        .setRequired(true))
-      .addStringOption(option => option
-        .setName('notes')
-        .setDescription('A message for your Secret Santa (what not to buy & other notes).')
-        .setRequired(true)),
+      .setDescription('Register for Secret Santa or update your registration information.'),
     )
     .addSubcommand(subcommand => subcommand
       .setName('unregister')
       .setDescription('Unregister for Secret Santa.'),
-    )
-    .addSubcommand(subcommand => subcommand
-      .setName('start')
-      .setDescription('Starts the Secret Santa session. Admin-only.'),
-    )
-    .addSubcommand(subcommand => subcommand
-      .setName('reset')
-      .setDescription('Resets Secret Santa. Admin-only.'),
-    )
-    .addSubcommand(subcommand => subcommand
-      .setName('list')
-      .setDescription('Gets a list of users who are registered. Admin-only.'),
-    )
-    .addSubcommand(subcommand => subcommand
-      .setName('blacklist')
-      .setDescription('Gets a list of banned Secret Santa pairs. Admin-only.'),
-    )
-    .addSubcommand(subcommand => subcommand
-      .setName('giftlist')
-      .setDescription('Gets a list of gift shipment statuses. Admin-only.')
-      .addBooleanOption(option => option
-        .setName('public')
-        .setDescription('Whether or not it should be posted publically (non-ephemeral). Default false.')
-        .setRequired(false)),
-    )
-    .addSubcommand(subcommand => subcommand
-      .setName('selectedlist')
-      .setDescription('Gets a list of selected Secret Santa pairs. Admin-only.')
-      .addBooleanOption(option => option
-        .setName('public')
-        .setDescription('Whether or not it should be posted publically (non-ephemeral). Default false.')
-        .setRequired(false)),
     ),
   async execute(interaction) {
-    const client = interaction.client;
     const subcommand = interaction.options.getSubcommand();
-    const isAdmin = config.users.admins.includes(interaction.user.id);
     logger.debug(`Resolving subcommand: ${subcommand}`);
 
-    if (subcommand === 'start' || subcommand === 'reset') {
-      await interaction.deferReply({ ephemeral: true });
-      if (!isAdmin) {
-        interaction.followUp({
-          content: 'You do not have permission to run this command.',
-          ephemeral: true,
-        });
-      } else if (subcommand === 'start' && !(await SantaManager.started())) {
-        const resp = await SantaManager.start(client);
-        if (resp) {
-          interaction.followUp({
-            content: 'Secret Santa has been started.',
-            ephemeral: true,
-          });
-        } else {
-          interaction.followUp({
-            content: 'Not enough users are registered to start.',
-            ephemeral: true,
-          });
-        }
-      } else if (subcommand === 'reset') {
-        await SantaManager.reset();
-        interaction.followUp({
-          content: 'Secret Santa has been reset.',
-          ephemeral: true,
-        });
-      } else {
-        interaction.followUp({
-          content: `[ERROR] The Secret Santa session is already in the state you are trying to set. Failed to ${subcommand}.`,
-          ephemeral: true,
-        });
-      }
-    } else if (subcommand.endsWith('register')) {
+    if (subcommand.endsWith('register')) {
       if (await SantaManager.started()) {
-        interaction.reply({
+        await interaction.reply({
           content: `[ERROR] The Secret Santa session has already started. Failed to ${subcommand}.`,
           ephemeral: true,
         });
@@ -185,97 +48,26 @@ export default {
       }
 
       if (subcommand === 'register') {
-        const name = interaction.options.getString('name');
-        const address = interaction.options.getString('address');
-        const notes = interaction.options.getString('notes');
-        const added = await SantaManager.addSanta({
-          discordId: interaction.user.id,
-          name, address, notes,
-        });
-        if (added) {
-          interaction.reply({
-            content: 'Successfully registered.',
-            ephemeral: true,
-          });
-        } else {
-          interaction.reply({
-            content: 'Successfully updated registration.',
-            ephemeral: true,
-          });
-        }
+        const existing = await SantaManager.getParticipant(interaction.user.id);
+        logger.debug('Showing register modal...');
+        await interaction.showModal(SantaMessaging.buildRegisterModal(existing));
       } else if (subcommand === 'unregister') {
         const removed = await SantaManager.removeSanta(interaction.user.id);
         if (removed) {
-          interaction.reply({
+          await interaction.reply({
             content: 'Successfully unregistered.',
             ephemeral: true,
           });
         } else {
-          interaction.reply({
+          await interaction.reply({
             content: '[ERROR] You are not registered.',
-            ephemeral: true,
-          });
-        }
-      }
-    } else if (subcommand.endsWith('list')) {
-      if (!isAdmin) {
-        interaction.reply({
-          content: 'You do not have permission to run this command.',
-          ephemeral: true,
-        });
-      } else if (subcommand === 'list') {
-        const santaList = await SantaManager.getAll();
-        const msg = santaList.reduce((list, santa) => `${list}  <@${santa.discordId}>`, '').trim();
-        interaction.reply({
-          content: `Santas Registered: ${msg}`,
-          ephemeral: true,
-        });
-      } else if (subcommand === 'blacklist') {
-        const blacklists = await SantaManager.getBlacklists();
-        const msg = Object.entries(blacklists).reduce((m, [santa, recList]) => `${m}\n<@${santa}>  \u2192  ${recList.map(r => `<@${r}>`).join('  ')}`, '').trim();
-        interaction.reply({
-          content: `Santa \u2192 Banned Receiver\n${msg}`,
-          ephemeral: true,
-        });
-      } else if (subcommand === 'selectedlist') {
-        if (await SantaManager.started()) {
-          const selectedPairs = await SantaManager.getSelectedPairs();
-          const msg = Object.entries(selectedPairs).reduce((m, [santa, rec]) => `${m}\n\uD83C\uDF85 <@${santa}> \u27F6 \uD83C\uDF81 <@${rec}>`, '').trim();
-          const isEphemeral = !interaction.options.getBoolean('public');
-          interaction.reply({
-            content: msg,
-            ephemeral: isEphemeral,
-          });
-        } else {
-          interaction.reply({
-            content: '[ERROR] The Secret Santa session has not started yet. There are no pairs.',
-            ephemeral: true,
-          });
-        }
-      } else if (subcommand === 'giftlist') {
-        if (await SantaManager.started()) {
-          const giftTrackingList = await SantaManager.getGiftTrackingList();
-          const friendlyStatus = {
-            'NOT_SENT': 'Not Sent ❌',
-            'SENT': 'Sent 📦',
-            'DELIVERED': 'Delivered 🎁',
-          };
-          const msg = giftTrackingList.reduce((m, item) => `${m}\n<@${item.receiver_id}>'s Santa Gift Status: **${friendlyStatus[item.gift_status]}** (<t:${item.gift_status_timestamp}:F>)`, '').trim();
-          const isEphemeral = !interaction.options.getBoolean('public');
-          interaction.reply({
-            content: msg || 'No tracking records found.',
-            ephemeral: isEphemeral,
-          });
-        } else {
-          interaction.reply({
-            content: '[ERROR] The Secret Santa session has not started yet.',
             ephemeral: true,
           });
         }
       }
     } else if (subcommand === 'gift') {
       if (!(await SantaManager.isRegistered(interaction.user.id))) {
-        interaction.reply({
+        await interaction.reply({
           content: '[ERROR] You are not registered.',
           ephemeral: true,
         });
@@ -283,7 +75,7 @@ export default {
       }
 
       if (!(await SantaManager.started())) {
-        interaction.reply({
+        await interaction.reply({
           content: '[ERROR] The Secret Santa session has not started yet.',
           ephemeral: true,
         });
@@ -293,19 +85,19 @@ export default {
       const targetStatus = interaction.options.getString('status');
       const updated = await SantaManager.updateGiftStatus(interaction.user.id, targetStatus);
       if (updated) {
-        interaction.reply({
+        await interaction.reply({
           content: `Successfully updated tracking gift status to: **${targetStatus}**`,
           ephemeral: true,
         });
       } else {
-        interaction.reply({
+        await interaction.reply({
           content: '[ERROR] Gift milestone update failed.',
           ephemeral: true,
         });
       }
-    } else {
+    } else if (subcommand === 'msg') {
       if (!(await SantaManager.isRegistered(interaction.user.id))) {
-        interaction.reply({
+        await interaction.reply({
           content: '[ERROR] You are not registered.',
           ephemeral: true,
         });
@@ -313,91 +105,142 @@ export default {
       }
 
       if (!(await SantaManager.started())) {
-        interaction.reply({
+        await interaction.reply({
           content: '[ERROR] The Secret Santa session has not started yet. Unable to send message.',
           ephemeral: true,
         });
         return;
       }
 
-      await interaction.deferReply({ ephemeral: true });
-      const msg = interaction.options.getString('msg');
-      let contentOutput = `Sent the following message to ${subcommand}:\n`;
-      const rpMode = interaction.options.getString('rp-mode') ?? 'URIANGER';
-      try {
-        if (subcommand === 'channel') {
-          logger.debug('Sending message to channel...');
-          const channel = await client.channels.fetch(await SantaManager.getChannelId());
-          const modifiedText = await SantaManager.logAndTransformMessage(interaction.user.id, 'SANTA_TO_PUBLIC', msg, rpMode);
-          const embed = await SantaManager.getEmbedForMessage(modifiedText);
-          embed.setTimestamp();
-          await channel.send({
-            embeds: [embed],
-          });
-          contentOutput += `${modifiedText}\n\nOriginal:\n${msg}`;
-        } else if (subcommand === 'santa') {
-          logger.debug('Sending message to santa...');
-          const channel = await client.users.fetch(await SantaManager.getSanta(interaction.user.id));
-          const embed = await SantaManager.getEmbedForMessage(msg, interaction.user);
-          embed.setFooter({
-            text: 'You can reply using `/ss receiver <msg>`',
-          });
-          await channel.send({
-            embeds: [embed],
-          });
-          await SantaManager.logAndTransformMessage(interaction.user.id, 'RECEIVER_TO_SANTA', msg);
-          contentOutput += `${msg}`;
-        } else if (subcommand === 'receiver') {
-          logger.debug('Sending message to receiver...');
-          const channel = await client.users.fetch(await SantaManager.getReceiver(interaction.user.id));
-          const modifiedText = await SantaManager.logAndTransformMessage(interaction.user.id, 'SANTA_TO_RECEIVER', msg, rpMode);
-          const embed = await SantaManager.getEmbedForMessage(modifiedText);
-          embed.setFooter({
-            text: 'You can reply using `/ss santa <msg>`',
-          });
-          await channel.send({
-            embeds: [embed],
-          });
-          contentOutput += `${modifiedText}\n\nOriginal:\n${msg}`;
-        } else if (subcommand === 'user') {
-          logger.debug('Sending message to user...');
-          const user = interaction.options.getUser('name');
-          if (!user || user.id === interaction.user.id || !(await SantaManager.isRegistered(user.id))) {
-            interaction.followUp({
-              content: '[ERROR] The specified user is not valid for this command.',
-              ephemeral: true,
-            });
-            return;
-          }
-          const receiver = await client.users.fetch(await SantaManager.getReceiver(interaction.user.id));
-          const modifiedText = await SantaManager.logAndTransformMessage(interaction.user.id, 'SANTA_TO_USER', msg, rpMode);
-          const embed = await SantaManager.getEmbedForMessage(modifiedText, receiver.displayName);
-          embed.setFooter({
-            text: 'You can reply using `/ss user <msg>`',
-          });
-          await user.send({
-            embeds: [embed],
-          });
-          contentOutput += `${modifiedText}\n\nOriginal:\n${msg}`;
-        }
-        interaction.followUp({
-          content: 'Success',
-          ephemeral: true,
-        });
-        interaction.user.send({
-          content: contentOutput,
-        });
-      } catch (error) {
-        logger.error(error);
-        interaction.followUp({
-          content: `[ERROR] There was an issue sending your message to ${subcommand}.\nMessage: ${msg}`,
-          ephemeral: true,
-        });
-      }
+      logger.debug('Showing message target select menu...');
+      await interaction.reply({
+        content: 'Who do you want to message?',
+        components: [await SantaMessaging.buildTargetSelectRow(interaction.client, interaction.user.id)],
+        ephemeral: true,
+      });
     }
   },
+  /**
+   * Handles select menu interactions namespaced under this command.
+   * Currently only utilized by `/ss msg`.
+   * @param {StringSelectMenuInteraction} interaction The select menu interaction to handle.
+   */
+  async selectMenu(interaction) {
+    const [, action] = interaction.customId.split(':');
+    if (action !== 'msgtarget') {
+      return;
+    }
+
+    const target = SantaMessaging.parseTargetSelection(interaction);
+    const modal = await SantaMessaging.buildComposeModal(target, interaction.user.id);
+    if (!modal) {
+      await interaction.update({
+        content: '[ERROR] There are no other registered users to message.',
+        components: [],
+      });
+      return;
+    }
+
+    logger.debug(`Showing compose modal for target: ${target}`);
+    await interaction.showModal(modal);
+  },
+  /**
+   * Handles button interactions namespaced under this command.
+   * Currently only utilized by `/ss msg` for the Reply button.
+   * @param {ButtonInteraction} interaction The button interaction to handle.
+   */
+  async button(interaction) {
+    const [, action, direction, targetId, rpMode] = interaction.customId.split(':');
+    if (action !== 'reply') {
+      return;
+    }
+
+    if (!(await SantaManager.isRegistered(interaction.user.id))) {
+      await interaction.reply({
+        content: '[ERROR] You are not registered.',
+        ephemeral: true,
+      });
+      return;
+    }
+
+    if (!(await SantaManager.started())) {
+      await interaction.reply({
+        content: '[ERROR] The Secret Santa session has not started yet. Unable to send message.',
+        ephemeral: true,
+      });
+      return;
+    }
+
+    logger.debug(`Showing reply modal for direction: ${direction}`);
+    await interaction.showModal(SantaMessaging.buildReplyModal(direction, targetId, rpMode));
+  },
+  /**
+   * Handles modal submissions namespaced under this command.
+   * @param {ModalSubmitInteraction} interaction The modal submit interaction to handle.
+   */
+  async modalSubmit(interaction) {
+    const [, action] = interaction.customId.split(':');
+    if (action === 'registermodal') {
+      if (await SantaManager.started()) {
+        await interaction.reply({
+          content: '[ERROR] The Secret Santa session has already started. Failed to register.',
+          ephemeral: true,
+        });
+        return;
+      }
+
+      const { name, address, notes } = SantaMessaging.parseRegistrationSubmission(interaction);
+      const added = await SantaManager.addSanta({
+        discordId: interaction.user.id,
+        name, address, notes,
+      });
+      await interaction.reply({
+        content: added ? 'Successfully registered.' : 'Successfully updated registration.',
+        ephemeral: true,
+      });
+      return;
+    }
+
+    const { direction, targetId, rpMode, msg, error } = await SantaMessaging.parseModalSubmission(interaction);
+    if (error) {
+      await interaction.reply({
+        content: `[ERROR] ${error}`,
+        ephemeral: true,
+      });
+      return;
+    }
+
+    await interaction.deferReply({ ephemeral: true });
+    try {
+      await SantaMessaging.sendSantaMessage(interaction, direction, targetId, rpMode, msg);
+    } catch (err) {
+      logger.error(err);
+      await interaction.followUp({
+        content: `[ERROR] There was an issue sending your message to ${SantaMessaging.DIRECTION_LABEL[direction]}.\nMessage: ${msg}`,
+        ephemeral: true,
+      });
+    }
+  },
+  /**
+   * Handles errors thrown by execute/button/modalSubmit, notifying the user.
+   * @param {Interaction} interaction The interaction that was being handled when the error occurred.
+   * @param {Error} error The error that was thrown.
+   */
   async error(interaction, error) {
-    logger.error(`Error executing ${interaction.commandName}`);
+    logger.error(`Error executing ${interaction.commandName ?? interaction.customId}`);
     logger.error(error);
+    const payload = {
+      content: '[ERROR] Something went wrong while processing your request. Please try again.',
+      ephemeral: true,
+    };
+    try {
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp(payload);
+      } else {
+        await interaction.reply(payload);
+      }
+    } catch (notifyError) {
+      logger.error('Failed to notify user of the above error:', notifyError);
+    }
   },
 };
