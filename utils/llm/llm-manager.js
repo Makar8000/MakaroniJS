@@ -1,7 +1,7 @@
-import { OpenRouter } from '@openrouter/sdk';
-import { Collection } from 'discord.js';
-import config from './config.js';
-import logger from '../logger.js';
+import { OpenRouter } from "@openrouter/sdk";
+import { Collection } from "discord.js";
+import config from "./config.js";
+import logger from "../logger.js";
 
 const openRouter = new OpenRouter();
 const prompts = new Collection();
@@ -56,7 +56,7 @@ function addPromptContext(messageId, context) {
  */
 async function sendPrompt(message, prompt) {
   try {
-    const newPrompt = { role: 'user', content: prompt };
+    const newPrompt = { role: "user", content: prompt };
     const prevMessages = getPromptContext(message);
     const messages = [
       ...prevMessages,
@@ -65,13 +65,13 @@ async function sendPrompt(message, prompt) {
 
     const response = await openRouter.chat.send({
       chatRequest: {
-        model: process.env.OPENROUTER_MODEL,
+        model: Deno.env.get("OPENROUTER_MODEL"),
         messages,
       },
     });
 
     const responseMessage = response?.choices?.shift()?.message;
-    if (typeof responseMessage === 'object') {
+    if (typeof responseMessage === "object") {
       messages.push(responseMessage);
       deletePromptContext(message);
       return messages;
@@ -86,8 +86,8 @@ async function sendPrompt(message, prompt) {
  * Maps a Secret Santa RP mode to its corresponding LLM system message set.
  */
 const rpModeSystemMessages = {
-  URIANGER: 'systemMessagesSantaUrianger',
-  SIMPLE: 'systemMessagesSantaSimple',
+  URIANGER: "systemMessagesSantaUrianger",
+  SIMPLE: "systemMessagesSantaSimple",
 };
 
 /**
@@ -107,14 +107,14 @@ async function sendSantaPrompt(prompt, historyContext, rpMode) {
     const messages = [
       ...config[systemMessagesKey],
       ...historyContext,
-      { role: 'user', content: `<SANTA_MESSAGE>${prompt}</SANTA_MESSAGE>` },
+      { role: "user", content: `<SANTA_MESSAGE>${prompt}</SANTA_MESSAGE>` },
     ];
 
     const response = await openRouter.chat.send({
       chatRequest: {
-        model: process.env.OPENROUTER_MODEL,
+        model: Deno.env.get("OPENROUTER_MODEL"),
         messages,
-        reasoning: { effort: 'minimal' },
+        reasoning: { effort: "minimal" },
       },
     });
 

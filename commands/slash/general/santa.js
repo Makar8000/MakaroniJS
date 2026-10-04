@@ -1,38 +1,44 @@
-import { MessageFlags, RESTJSONErrorCodes, SlashCommandBuilder } from 'discord.js';
-import SantaManager from '../../../utils/santa/santa-manager.js';
-import SantaMessaging from '../../../utils/santa/santa-interactions.js';
-import logger from '../../../utils/logger.js';
+import { MessageFlags, RESTJSONErrorCodes, SlashCommandBuilder } from "discord.js";
+import SantaManager from "../../../utils/santa/santa-manager.js";
+import SantaMessaging from "../../../utils/santa/santa-interactions.js";
+import logger from "../../../utils/logger.js";
 
 export default {
   data: new SlashCommandBuilder()
-    .setName('ss')
-    .setDescription('Secret Santa commands.')
-    .addSubcommand(subcommand => subcommand
-      .setName('msg')
-      .setDescription('Compose a Secret Santa message.'),
+    .setName("ss")
+    .setDescription("Secret Santa commands.")
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("msg")
+        .setDescription("Compose a Secret Santa message.")
     )
-    .addSubcommand(subcommand => subcommand
-      .setName('gift')
-      .setDescription('Update your gift status milestone tracking details.')
-      .addStringOption(option => option
-        .setName('status')
-        .setDescription('The milestone state.')
-        .setRequired(true)
-        .addChoices(...Object.entries(SantaMessaging.GIFT_STATUS_LABEL).map(([value, name]) => ({ name, value })))),
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("gift")
+        .setDescription("Update your gift status milestone tracking details.")
+        .addStringOption((option) =>
+          option
+            .setName("status")
+            .setDescription("The milestone state.")
+            .setRequired(true)
+            .addChoices(...Object.entries(SantaMessaging.GIFT_STATUS_LABEL).map(([value, name]) => ({ name, value })))
+        )
     )
-    .addSubcommand(subcommand => subcommand
-      .setName('register')
-      .setDescription('Register for Secret Santa or update your registration information.'),
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("register")
+        .setDescription("Register for Secret Santa or update your registration information.")
     )
-    .addSubcommand(subcommand => subcommand
-      .setName('unregister')
-      .setDescription('Unregister for Secret Santa.'),
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("unregister")
+        .setDescription("Unregister for Secret Santa.")
     ),
   async execute(interaction) {
     const subcommand = interaction.options.getSubcommand();
     logger.debug(`Resolving subcommand: ${subcommand}`);
 
-    if (subcommand.endsWith('register')) {
+    if (subcommand.endsWith("register")) {
       if (SantaManager.started()) {
         await interaction.reply({
           content: `[ERROR] The Secret Santa session has already started. Failed to ${subcommand}.`,
@@ -41,28 +47,28 @@ export default {
         return;
       }
 
-      if (subcommand === 'register') {
+      if (subcommand === "register") {
         const existing = SantaManager.getParticipant(interaction.user.id);
-        logger.debug('Showing register modal...');
+        logger.debug("Showing register modal...");
         await interaction.showModal(SantaMessaging.buildRegisterModal(existing));
-      } else if (subcommand === 'unregister') {
+      } else if (subcommand === "unregister") {
         const removed = SantaManager.removeSanta(interaction.user.id);
         if (removed) {
           await interaction.reply({
-            content: 'Successfully unregistered.',
+            content: "Successfully unregistered.",
             flags: MessageFlags.Ephemeral,
           });
         } else {
           await interaction.reply({
-            content: '[ERROR] You are not registered.',
+            content: "[ERROR] You are not registered.",
             flags: MessageFlags.Ephemeral,
           });
         }
       }
-    } else if (subcommand === 'gift') {
+    } else if (subcommand === "gift") {
       if (!SantaManager.isRegistered(interaction.user.id)) {
         await interaction.reply({
-          content: '[ERROR] You are not registered.',
+          content: "[ERROR] You are not registered.",
           flags: MessageFlags.Ephemeral,
         });
         return;
@@ -70,22 +76,22 @@ export default {
 
       if (!SantaManager.started()) {
         await interaction.reply({
-          content: '[ERROR] The Secret Santa session has not started yet.',
+          content: "[ERROR] The Secret Santa session has not started yet.",
           flags: MessageFlags.Ephemeral,
         });
         return;
       }
 
-      const targetStatus = interaction.options.getString('status');
+      const targetStatus = interaction.options.getString("status");
       SantaManager.updateGiftStatus(interaction.user.id, targetStatus);
       await interaction.reply({
         content: `Successfully updated tracking gift status to: **${targetStatus}**`,
         flags: MessageFlags.Ephemeral,
       });
-    } else if (subcommand === 'msg') {
+    } else if (subcommand === "msg") {
       if (!SantaManager.isRegistered(interaction.user.id)) {
         await interaction.reply({
-          content: '[ERROR] You are not registered.',
+          content: "[ERROR] You are not registered.",
           flags: MessageFlags.Ephemeral,
         });
         return;
@@ -93,15 +99,15 @@ export default {
 
       if (!SantaManager.started()) {
         await interaction.reply({
-          content: '[ERROR] The Secret Santa session has not started yet. Unable to send message.',
+          content: "[ERROR] The Secret Santa session has not started yet. Unable to send message.",
           flags: MessageFlags.Ephemeral,
         });
         return;
       }
 
-      logger.debug('Showing message target select menu...');
+      logger.debug("Showing message target select menu...");
       await interaction.reply({
-        content: 'Who do you want to message?',
+        content: "Who do you want to message?",
         components: [await SantaMessaging.buildTargetSelectRow(interaction.client, interaction.user.id)],
         flags: MessageFlags.Ephemeral,
       });
@@ -113,8 +119,8 @@ export default {
    * @param {StringSelectMenuInteraction} interaction The select menu interaction to handle.
    */
   async selectMenu(interaction) {
-    const [, action] = interaction.customId.split(':');
-    if (action !== 'msgtarget') {
+    const [, action] = interaction.customId.split(":");
+    if (action !== "msgtarget") {
       return;
     }
 
@@ -122,7 +128,7 @@ export default {
     const modal = await SantaMessaging.buildComposeModal(interaction.client, target, interaction.user.id);
     if (!modal) {
       await interaction.update({
-        content: '[ERROR] There are no other registered users to message.',
+        content: "[ERROR] There are no other registered users to message.",
         components: [],
       });
       return;
@@ -137,14 +143,14 @@ export default {
    * @param {ButtonInteraction} interaction The button interaction to handle.
    */
   async button(interaction) {
-    const [, action, direction, targetId, rpMode] = interaction.customId.split(':');
-    if (action !== 'reply') {
+    const [, action, direction, targetId, rpMode] = interaction.customId.split(":");
+    if (action !== "reply") {
       return;
     }
 
     if (!SantaManager.isRegistered(interaction.user.id)) {
       await interaction.reply({
-        content: '[ERROR] You are not registered.',
+        content: "[ERROR] You are not registered.",
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -152,7 +158,7 @@ export default {
 
     if (!SantaManager.started()) {
       await interaction.reply({
-        content: '[ERROR] The Secret Santa session has not started yet. Unable to send message.',
+        content: "[ERROR] The Secret Santa session has not started yet. Unable to send message.",
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -166,11 +172,11 @@ export default {
    * @param {ModalSubmitInteraction} interaction The modal submit interaction to handle.
    */
   async modalSubmit(interaction) {
-    const [, action] = interaction.customId.split(':');
-    if (action === 'registermodal') {
+    const [, action] = interaction.customId.split(":");
+    if (action === "registermodal") {
       if (SantaManager.started()) {
         await interaction.reply({
-          content: '[ERROR] The Secret Santa session has already started. Failed to register.',
+          content: "[ERROR] The Secret Santa session has already started. Failed to register.",
           flags: MessageFlags.Ephemeral,
         });
         return;
@@ -179,10 +185,12 @@ export default {
       const { name, address, notes } = SantaMessaging.parseRegistrationSubmission(interaction);
       const added = SantaManager.addSanta({
         discordId: interaction.user.id,
-        name, address, notes,
+        name,
+        address,
+        notes,
       });
       await interaction.reply({
-        content: added ? 'Successfully registered.' : 'Successfully updated registration.',
+        content: added ? "Successfully registered." : "Successfully updated registration.",
         flags: MessageFlags.Ephemeral,
       });
       return;

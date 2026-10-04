@@ -1,21 +1,15 @@
-import fs from 'fs';
-import path from 'path';
-import { pathToFileURL } from 'url';
-import logger from './logger.js';
+import { join, resolve, toFileUrl } from "@std/path";
+import logger from "./logger.js";
 
 const parseCommandFiles = async (cmdPath, commands) => {
-  const commandFiles = fs.readdirSync(cmdPath);
-  const jsFiles = commandFiles.filter(file => file.endsWith('.js'));
-  const folders = commandFiles.filter(file => !file.endsWith('.js'));
+  const entries = Array.from(Deno.readDirSync(cmdPath));
 
-  for (const folder of folders) {
-    await parseCommandFiles(path.join(cmdPath, folder), commands);
+  for (const folder of entries.filter((e) => e.isDirectory)) {
+    await parseCommandFiles(join(cmdPath, folder.name), commands);
   }
 
-  for (const file of jsFiles) {
-    const absoluteFilePath = path.resolve(path.join(cmdPath, file));
-    const fileUrl = pathToFileURL(absoluteFilePath).href;
-    const commandModule = await import(fileUrl);
+  for (const file of entries.filter((e) => e.name.endsWith(".js"))) {
+    const commandModule = await import(toFileUrl(resolve(cmdPath, file.name)).href);
     const command = commandModule.default || commandModule;
 
     commands.set(command.data.name, command);
@@ -23,9 +17,9 @@ const parseCommandFiles = async (cmdPath, commands) => {
 };
 
 export default async (cmdPath, commands) => {
-  if (typeof commands === 'object' && typeof commands.set === 'function') {
+  if (typeof commands === "object" && typeof commands.set === "function") {
     await parseCommandFiles(cmdPath, commands);
   } else {
-    logger.error('Invalid collection provided');
+    logger.error("Invalid collection provided");
   }
 };

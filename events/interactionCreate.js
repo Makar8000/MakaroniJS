@@ -1,5 +1,5 @@
-import { Events } from 'discord.js';
-import logger from '../utils/logger.js';
+import { Events } from "discord.js";
+import logger from "../utils/logger.js";
 
 export default {
   name: Events.InteractionCreate,
@@ -14,7 +14,7 @@ export default {
       try {
         await command.execute(interaction);
       } catch (error) {
-        if (typeof command.error === 'function') {
+        if (typeof command.error === "function") {
           await command.error(interaction, error);
         } else {
           logger.error(error);
@@ -23,12 +23,12 @@ export default {
       return;
     }
 
-    const isComponentOrModal = interaction.isButton() || interaction.isModalSubmit()
-      || interaction.isStringSelectMenu() || interaction.isUserSelectMenu();
+    const isComponentOrModal = interaction.isButton() || interaction.isModalSubmit() ||
+      interaction.isStringSelectMenu() || interaction.isUserSelectMenu();
     if (isComponentOrModal) {
       // Component/Modal customIds are namespaced as `<commandName>:<...>` so they can be
       // routed back to the command that created them.
-      const [commandName] = interaction.customId.split(':');
+      const [commandName] = interaction.customId.split(":");
       const command = interaction.client.commands.slash.get(commandName);
       if (!command) {
         logger.error(`No command matching customId prefix "${commandName}" was found.`);
@@ -37,15 +37,15 @@ export default {
 
       let handlerName;
       if (interaction.isButton()) {
-        handlerName = 'button';
+        handlerName = "button";
       } else if (interaction.isModalSubmit()) {
-        handlerName = 'modalSubmit';
+        handlerName = "modalSubmit";
       } else {
-        handlerName = 'selectMenu';
+        handlerName = "selectMenu";
       }
 
       const handler = command[handlerName];
-      if (typeof handler !== 'function') {
+      if (typeof handler !== "function") {
         logger.error(`Command "${commandName}" does not support ${handlerName} interactions.`);
         return;
       }
@@ -53,7 +53,7 @@ export default {
       try {
         await handler(interaction);
       } catch (error) {
-        if (typeof command.error === 'function') {
+        if (typeof command.error === "function") {
           await command.error(interaction, error);
         } else {
           logger.error(error);

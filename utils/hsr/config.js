@@ -1,33 +1,33 @@
 export const repoConfig = {
   GITLAB: {
-    OWNER: 'Dimbreath',
-    REPO: 'turnbasedgamedata',
-    BRANCH: 'main',
+    OWNER: "Dimbreath",
+    REPO: "turnbasedgamedata",
+    BRANCH: "main",
   },
-  OWNER: 'Dimbreath',
-  REPO: 'StarRailData',
-  BRANCH: 'master',
+  OWNER: "Dimbreath",
+  REPO: "StarRailData",
+  BRANCH: "master",
   FILES: {
-    InclinationType: 'ExcelOutput/InclinationType.json',
-    InclinationText: 'ExcelOutput/InclinationText.json',
-    TalkSentenceConfig: 'ExcelOutput/TalkSentenceConfig.json',
-    TextMapEN: 'TextMap/TextMapEN.json',
+    InclinationType: "ExcelOutput/InclinationType.json",
+    InclinationText: "ExcelOutput/InclinationText.json",
+    TalkSentenceConfig: "ExcelOutput/TalkSentenceConfig.json",
+    TextMapEN: "TextMap/TextMapEN.json",
   },
-  SCHEDULE: '*/3 * * * *',
+  SCHEDULE: "*/3 * * * *",
   KEYS: {
     INCLINATION: {
-      userList: 'inclinationCheckUsers',
-      jobName: 'inclinationTypes',
+      userList: "inclinationCheckUsers",
+      jobName: "inclinationTypes",
     },
   },
   CHARACTER_LIMIT: 1500,
 };
 
 export const messages = {
-  subscribeSuccess: 'You have successfully subscribed to notifications.',
-  subscribeError: 'There was an error when trying to subscribe. Maybe you are already subscribed?',
-  unsubscribeSuccess: 'You have successfully unsubscribed.',
-  unsubscribeError: 'There was an error when trying to unsubscribe. Maybe you are not currently subscribed?',
+  subscribeSuccess: "You have successfully subscribed to notifications.",
+  subscribeError: "There was an error when trying to subscribe. Maybe you are already subscribed?",
+  unsubscribeSuccess: "You have successfully unsubscribed.",
+  unsubscribeError: "There was an error when trying to unsubscribe. Maybe you are not currently subscribed?",
 };
 
 export default {

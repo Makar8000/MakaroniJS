@@ -1,5 +1,5 @@
-import LLMManager from '../../../utils/llm/llm-manager.js';
-import logger from '../../../utils/logger.js';
+import LLMManager from "../../../utils/llm/llm-manager.js";
+import logger from "../../../utils/logger.js";
 
 const Regexes = {
   msg: /^<@[0-9]+>\s(?<msg>.+)$/,
@@ -7,22 +7,22 @@ const Regexes = {
 
 export default {
   data: {
-    name: `<@${process.env.DISCORD_USER_ID}>`,
-    description: 'Use an LLM',
+    name: `<@${Deno.env.get("DISCORD_USER_ID")}>`,
+    description: "Use an LLM",
     ignorePrefix: true,
     params: [
       {
-        name: 'msg',
-        description: 'The message to feed into the LLM',
-        isValid: message => message?.content?.trim()?.split(' ')?.length >= 2,
-        getValue: message => message.content.trim().match(Regexes.msg)?.groups?.msg,
+        name: "msg",
+        description: "The message to feed into the LLM",
+        isValid: (message) => message?.content?.trim()?.split(" ")?.length >= 2,
+        getValue: (message) => message.content.trim().match(Regexes.msg)?.groups?.msg,
       },
     ],
   },
   async execute(message, params) {
-    const msg = params.get('msg')?.value;
+    const msg = params.get("msg")?.value;
     if (!msg) {
-      await message.channel.send('Sorry, but I was unable to parse your query.');
+      await message.channel.send("Sorry, but I was unable to parse your query.");
       return;
     }
 
@@ -33,9 +33,10 @@ export default {
       const followUp = await message.channel.send(latest.content);
       await LLMManager.addPromptContext(followUp.id, respHistory);
     } else {
-      logger.error('Unable to get LLM response.');
+      logger.error("Unable to get LLM response.");
     }
   },
+  // deno-lint-ignore require-await
   async error(interaction, error) {
     logger.error(`Error executing ${interaction.commandName}`);
     logger.error(error);

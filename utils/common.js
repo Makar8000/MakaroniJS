@@ -1,5 +1,5 @@
-import Keyv from 'keyv';
-import { KeyvFile } from 'keyv-file';
+import Keyv from "keyv";
+import { KeyvFile } from "keyv-file";
 
 /**
  * Parses an string that may contain HTML tags into
@@ -14,13 +14,13 @@ import { KeyvFile } from 'keyv-file';
 export const getDiscordStr = (str, maxLen) => {
   let newStr = str.trim();
   // Italics
-  newStr = newStr.replaceAll(/<\/?i>/g, '_');
+  newStr = newStr.replaceAll(/<\/?i>/g, "_");
   // New Lines
-  newStr = newStr.replaceAll(/<br\s?\/?>/g, '\n');
+  newStr = newStr.replaceAll(/<br\s?\/?>/g, "\n");
   // Bold
-  newStr = newStr.replaceAll(/<\/?(?:b|strong)>/g, '**');
+  newStr = newStr.replaceAll(/<\/?(?:b|strong)>/g, "**");
   // Other tags
-  newStr = newStr.replaceAll(/<\/?[^<]+>/g, '').trim();
+  newStr = newStr.replaceAll(/<\/?[^<]+>/g, "").trim();
 
   // Max Length
   if (maxLen) {

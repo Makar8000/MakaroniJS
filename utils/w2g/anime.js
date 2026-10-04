@@ -1,9 +1,9 @@
-import { Collection } from 'discord.js';
-import { META, ANIME } from '@consumet/extensions';
-import moment from 'moment';
-import logger from '../logger.js';
+import { Collection } from "discord.js";
+import { ANIME, META } from "@consumet/extensions";
+import moment from "moment";
+import logger from "../logger.js";
 
-const provider = new ANIME[process.env.ANIME_PROVIDER]();
+const provider = new ANIME[Deno.env.get("ANIME_PROVIDER")]();
 const consumet = new META.Anilist(provider);
 const infoCache = new Collection();
 
@@ -40,10 +40,10 @@ async function search(query) {
 async function fetchAnimeInfo(id, originalQuery, episodeNumber) {
   try {
     const time = moment();
-    infoCache.sweep(a => time.isAfter(a.expires));
+    infoCache.sweep((a) => time.isAfter(a.expires));
 
     let data = infoCache.get(id);
-    if (!data?.episodes?.find(e => e.number === episodeNumber)) {
+    if (!data?.episodes?.find((e) => e.number === episodeNumber)) {
       data = await consumet.fetchAnimeInfo(id);
     }
     const alternateTitles = [data.title.english, originalQuery];
@@ -60,7 +60,7 @@ async function fetchAnimeInfo(id, originalQuery, episodeNumber) {
     }
     if (data?.episodes?.length > 0) {
       if (!data.expires) {
-        infoCache.set(id, { ...data, expires: moment().add(6, 'hours') });
+        infoCache.set(id, { ...data, expires: moment().add(6, "hours") });
       }
       return data;
     }

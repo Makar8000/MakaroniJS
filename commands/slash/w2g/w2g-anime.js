@@ -1,30 +1,33 @@
-import { SlashCommandBuilder } from 'discord.js';
-import consumet from '../../../utils/w2g/anime.js';
-import w2g from '../../../utils/w2g/w2g.js';
-import config from '../../../utils/w2g/config.js';
-import logger from '../../../utils/logger.js';
+import { SlashCommandBuilder } from "discord.js";
+import consumet from "../../../utils/w2g/anime.js";
+import w2g from "../../../utils/w2g/w2g.js";
+import config from "../../../utils/w2g/config.js";
+import logger from "../../../utils/logger.js";
 
 export default {
   data: new SlashCommandBuilder()
-    .setName('w2g-anime')
-    .setDescription('Watch anime together.')
-    .addStringOption(option => option
-      .setName('anime-name')
-      .setDescription('The name of the anime to watch together.')
-      .setRequired(true),
+    .setName("w2g-anime")
+    .setDescription("Watch anime together.")
+    .addStringOption((option) =>
+      option
+        .setName("anime-name")
+        .setDescription("The name of the anime to watch together.")
+        .setRequired(true)
     )
-    .addIntegerOption(option => option
-      .setName('episode')
-      .setDescription('The episode number.'),
+    .addIntegerOption((option) =>
+      option
+        .setName("episode")
+        .setDescription("The episode number.")
     )
-    .addStringOption(option => option
-      .setName('room-id')
-      .setDescription('The room ID to use. If none is provided, a new one will be created.'),
+    .addStringOption((option) =>
+      option
+        .setName("room-id")
+        .setDescription("The room ID to use. If none is provided, a new one will be created.")
     ),
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
-    const animeName = interaction.options.getString('anime-name');
-    const episodeNumber = interaction.options.getInteger('episode') ?? 1;
+    const animeName = interaction.options.getString("anime-name");
+    const episodeNumber = interaction.options.getInteger("episode") ?? 1;
 
     const animeList = await consumet.search(animeName);
     if (animeList?.length < 1) {
@@ -42,7 +45,7 @@ export default {
       });
       return;
     }
-    const episodeId = animeInfo.episodes.find(e => e.number === episodeNumber)?.id;
+    const episodeId = animeInfo.episodes.find((e) => e.number === episodeNumber)?.id;
     if (!episodeId) {
       interaction.followUp({
         content: `[ERROR] Unable to find episode ${episodeNumber} of \`${animeName}\`.`,
@@ -63,7 +66,7 @@ export default {
     animeInfo.videoUrl = videoUrl;
     animeInfo.episodeId = episodeId;
     animeInfo.episodeNumber = episodeNumber;
-    const roomId = interaction.options.getString('room-id');
+    const roomId = interaction.options.getString("room-id");
     if (!roomId) {
       const key = await w2g.createRoom(videoUrl);
       const resp = await w2g.addToRoom(key, videoUrl, { title: `[EP ${animeInfo.episodeNumber}] ${animeInfo.title.romaji}` });
@@ -76,7 +79,7 @@ export default {
         await interaction.deleteReply();
       } else {
         interaction.followUp({
-          content: 'Network error or invalid video url provided.',
+          content: "Network error or invalid video url provided.",
           ephemeral: true,
         });
       }
@@ -91,12 +94,13 @@ export default {
         await interaction.deleteReply();
       } else {
         interaction.followUp({
-          content: 'Unable to add video. This could be due to a bad room ID or invalid video link.',
+          content: "Unable to add video. This could be due to a bad room ID or invalid video link.",
           ephemeral: true,
         });
       }
     }
   },
+  // deno-lint-ignore require-await
   async error(interaction, error) {
     logger.error(`Error executing ${interaction.commandName}`);
     logger.error(error);

@@ -1,17 +1,17 @@
-import scheduler from 'node-schedule';
-import moment from 'moment';
-import AsyncLock from 'async-lock';
-import Keyv from 'keyv';
-import { KeyvFile } from 'keyv-file';
-import { Collection } from 'discord.js';
-import logger from '../logger.js';
+import scheduler from "node-schedule";
+import moment from "moment";
+import AsyncLock from "async-lock";
+import Keyv from "keyv";
+import { KeyvFile } from "keyv-file";
+import { Collection } from "discord.js";
+import logger from "../logger.js";
 const jobs = new Collection();
 
 const lock = new AsyncLock();
 const reminders = new Keyv({
-  namespace: 'reminders',
+  namespace: "reminders",
   store: new KeyvFile({
-    filename: './data/reminders.json',
+    filename: "./data/reminders.json",
   }),
 });
 
@@ -30,14 +30,14 @@ async function scheduleReminder(client, reminder) {
   }
 
   reminders.set(reminder.id, reminder);
-  let keys = await reminders.get('keys');
-  lock.acquire('remindersLock', () => {
+  let keys = await reminders.get("keys");
+  lock.acquire("remindersLock", () => {
     if (keys) {
       keys[reminder.id] = true;
     } else {
       keys = { [reminder.id]: true };
     }
-    reminders.set('keys', keys);
+    reminders.set("keys", keys);
   });
   return startJob(client, reminder);
 }
@@ -51,8 +51,8 @@ async function scheduleReminder(client, reminder) {
  */
 async function getReminders(userId) {
   const ret = [];
-  const keys = await reminders.get('keys');
-  if (keys && typeof keys === 'object') {
+  const keys = await reminders.get("keys");
+  if (keys && typeof keys === "object") {
     for (const key of Object.keys(keys)) {
       const rem = await reminders.get(key);
       if (rem.authorId === userId) {
@@ -76,9 +76,9 @@ async function cancelReminder(reminderId, userId) {
   const reminder = await reminders.get(reminderId);
   if (jobs.has(reminder.id) && reminder.authorId === userId) {
     jobs.get(reminder.id).cancel();
-    const keys = await reminders.get('keys');
+    const keys = await reminders.get("keys");
     delete keys[reminder.id];
-    await reminders.set('keys', keys);
+    await reminders.set("keys", keys);
     await reminders.delete(reminder.id);
     return true;
   }
@@ -134,9 +134,9 @@ async function sendReminder(client, reminder) {
       await client.users.send(reminder.authorId, message);
     }
 
-    const keys = await reminders.get('keys');
+    const keys = await reminders.get("keys");
     delete keys[reminder.id];
-    await reminders.set('keys', keys);
+    await reminders.set("keys", keys);
     await reminders.delete(reminder.id);
 
     return true;
@@ -153,12 +153,12 @@ async function sendReminder(client, reminder) {
  *  The discord.js client.
  */
 async function initJobs(client) {
-  const keys = await reminders.get('keys');
+  const keys = await reminders.get("keys");
   if (!keys) {
     return;
   }
 
-  const delay = { amount: 5, unit: 'seconds' };
+  const delay = { amount: 5, unit: "seconds" };
   const curTime = moment().add(delay.amount, delay.unit).unix();
   for (const key of Object.keys(keys)) {
     const rem = await reminders.get(key);

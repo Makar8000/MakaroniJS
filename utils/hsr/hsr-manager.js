@@ -1,18 +1,17 @@
-import fs from 'fs';
-import scheduler from 'node-schedule';
-import Keyv from 'keyv';
-import { KeyvFile } from 'keyv-file';
-import { Collection, AttachmentBuilder } from 'discord.js';
-import logger from '../logger.js';
-import { repoConfig } from './config.js';
-import { downloadJsonFile, getLatestCommitHash, getLatestCommit } from './github-utils.js';
-const incDataDefaultPath = './utils/hsr/inclination-types.json';
+import scheduler from "node-schedule";
+import Keyv from "keyv";
+import { KeyvFile } from "keyv-file";
+import { AttachmentBuilder, Collection } from "discord.js";
+import logger from "../logger.js";
+import { repoConfig } from "./config.js";
+import { downloadJsonFile, getLatestCommit, getLatestCommitHash } from "./github-utils.js";
+const incDataDefaultPath = "./utils/hsr/inclination-types.json";
 const jobs = new Collection();
 
 const hsr = new Keyv({
-  namespace: 'hsr',
+  namespace: "hsr",
   store: new KeyvFile({
-    filename: './data/hsr.json',
+    filename: "./data/hsr.json",
   }),
 });
 let curInclHash;
@@ -26,13 +25,13 @@ let curInclData;
  *  The inclination data.
  */
 async function loadIncData(sha) {
-  const incData = JSON.parse(fs.readFileSync(incDataDefaultPath));
+  const incData = JSON.parse(Deno.readTextFileSync(incDataDefaultPath));
   const incText = await downloadJsonFile(repoConfig.FILES.InclinationText, sha);
   const talkSentence = await downloadJsonFile(repoConfig.FILES.TalkSentenceConfig, sha);
   const textMap = await downloadJsonFile(repoConfig.FILES.TextMapEN, sha);
 
-  Object.keys(incText).map(key => {
-    incText[key].InclinationTypeList.forEach(type => {
+  Object.keys(incText).map((key) => {
+    incText[key].InclinationTypeList.forEach((type) => {
       if (incData[`${type}`]) {
         const id = incText[key].TalkSentenceID;
         const textId = talkSentence[`${id}`].TalkSentenceText.Hash;
@@ -60,15 +59,15 @@ async function checkForInclinationTypes(client) {
     const newData = await loadIncData();
     const outputList = [];
     let atLeastOne = false;
-    Object.keys(newData).map(type => {
-      newData[type].textMapList.map(newD => {
-        if (!curInclData[type].textMapList.find(oldD => oldD.id === newD.id)) {
+    Object.keys(newData).map((type) => {
+      newData[type].textMapList.map((newD) => {
+        if (!curInclData[type].textMapList.find((oldD) => oldD.id === newD.id)) {
           newData[type].newTextMapList.push(newD);
         }
       });
 
       if (newData[type].newTextMapList.length) {
-        outputList.push(`### ${newData[type].name}${newData[type].newTextMapList.map(({ text }) => `\n- ${text}`).join('')}`);
+        outputList.push(`### ${newData[type].name}${newData[type].newTextMapList.map(({ text }) => `\n- ${text}`).join("")}`);
         atLeastOne = true;
       } else {
         outputList.push(`### ${newData[type].name}\n_no new dialogue options_`);
@@ -76,7 +75,7 @@ async function checkForInclinationTypes(client) {
     });
 
     if (atLeastOne) {
-      const output = `## ${patch}\nSee below for a list of new dialogue options available for each achievement.\n${outputList.join('\n')}`;
+      const output = `## ${patch}\nSee below for a list of new dialogue options available for each achievement.\n${outputList.join("\n")}`;
       sendMessageToUsers(client, output);
     } else {
       const output = `## ${patch}\n_no new dialogue options this patch_`;
@@ -95,7 +94,7 @@ async function sendMessageToUsers(client, output) {
     if (enabled) {
       if (output.length > repoConfig.CHARACTER_LIMIT) {
         await client.users.send(userId, {
-          files: [new AttachmentBuilder(Buffer.from(output), { name: 'content.txt' })],
+          files: [new AttachmentBuilder(new TextEncoder().encode(output), { name: "content.txt" })],
         });
       } else {
         await client.users.send(userId, `\`\`\`${output}\`\`\``);
@@ -167,7 +166,7 @@ async function cancelInclinationCheck(userId) {
       return false;
     }
 
-    if (Object.values(users).filter(v => v).length === 0) {
+    if (Object.values(users).filter((v) => v).length === 0) {
       return cancelJob(repoConfig.KEYS.INCLINATION.jobName);
     }
     return true;
@@ -187,8 +186,8 @@ async function cancelInclinationCheck(userId) {
  * @returns
  *  A reference to the scheduled job.
  */
-// eslint-disable-next-line no-unused-vars
-async function scheduleRoleCheck(client, userId, isInitial) {
+// deno-lint-ignore require-await
+async function scheduleRoleCheck(_client, _userId, _isInitial) {
   // TODO: Implement
   return null;
 }
@@ -200,8 +199,8 @@ async function scheduleRoleCheck(client, userId, isInitial) {
  * @returns
  *  True if cancelation was successful. False otherwise.
  */
-// eslint-disable-next-line no-unused-vars
-async function cancelRoleCheck(userId) {
+// deno-lint-ignore require-await
+async function cancelRoleCheck(_userId) {
   // TODO: Implement
   return null;
 }
@@ -262,7 +261,7 @@ async function initJobs(client) {
   for (const [userId, enabled] of Object.entries(inclinationCheckUsers)) {
     if (enabled) {
       const successful = !!(await scheduleInclinationCheck(client, userId, true));
-      logger.info(`Scheduling HSR Inclination subscription for ${userId} was ${successful ? '' : 'un'}successful.`);
+      logger.info(`Scheduling HSR Inclination subscription for ${userId} was ${successful ? "" : "un"}successful.`);
     }
   }
 }
@@ -271,4 +270,6 @@ export default {
   initJobs,
   scheduleInclinationCheck,
   cancelInclinationCheck,
+  scheduleRoleCheck,
+  cancelRoleCheck,
 };

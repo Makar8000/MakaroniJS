@@ -1,25 +1,27 @@
-import { SlashCommandBuilder } from 'discord.js';
-import w2g from '../../../utils/w2g/w2g.js';
-import config from '../../../utils/w2g/config.js';
-import logger from '../../../utils/logger.js';
+import { SlashCommandBuilder } from "discord.js";
+import w2g from "../../../utils/w2g/w2g.js";
+import config from "../../../utils/w2g/config.js";
+import logger from "../../../utils/logger.js";
 
 export default {
   data: new SlashCommandBuilder()
-    .setName('w2g')
-    .setDescription('Watch something together.')
-    .addStringOption(option => option
-      .setName('video-link')
-      .setDescription('The video link to watch together.')
-      .setRequired(true),
+    .setName("w2g")
+    .setDescription("Watch something together.")
+    .addStringOption((option) =>
+      option
+        .setName("video-link")
+        .setDescription("The video link to watch together.")
+        .setRequired(true)
     )
-    .addStringOption(option => option
-      .setName('room-id')
-      .setDescription('The room ID to use. If none is provided, a new one will be created.'),
+    .addStringOption((option) =>
+      option
+        .setName("room-id")
+        .setDescription("The room ID to use. If none is provided, a new one will be created.")
     ),
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
-    const videoUrl = interaction.options.getString('video-link');
-    const roomId = interaction.options.getString('room-id');
+    const videoUrl = interaction.options.getString("video-link");
+    const roomId = interaction.options.getString("room-id");
     if (!roomId) {
       const key = await w2g.createRoom(videoUrl);
       if (key) {
@@ -30,7 +32,7 @@ export default {
         await interaction.deleteReply();
       } else {
         interaction.followUp({
-          content: 'Network error or invalid video url provided.',
+          content: "Network error or invalid video url provided.",
           ephemeral: true,
         });
       }
@@ -44,12 +46,13 @@ export default {
         await interaction.deleteReply();
       } else {
         interaction.followUp({
-          content: 'Unable to add video. This could be due to a bad room ID or invalid video link.',
+          content: "Unable to add video. This could be due to a bad room ID or invalid video link.",
           ephemeral: true,
         });
       }
     }
   },
+  // deno-lint-ignore require-await
   async error(interaction, error) {
     logger.error(`Error executing ${interaction.commandName}`);
     logger.error(error);

@@ -1,8 +1,8 @@
-import { Events } from 'discord.js';
-import logger from '../utils/logger.js';
-import ReminderManager from '../utils/reminders/reminder-manager.js';
-import HSRManager from '../utils/hsr/hsr-manager.js';
-import SantaManager from '../utils/santa/santa-manager.js';
+import { Events } from "discord.js";
+import logger from "../utils/logger.js";
+import ReminderManager from "../utils/reminders/reminder-manager.js";
+import HSRManager from "../utils/hsr/hsr-manager.js";
+import SantaManager from "../utils/santa/santa-manager.js";
 
 export default {
   name: Events.ClientReady,

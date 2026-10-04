@@ -1,39 +1,50 @@
-import { SlashCommandBuilder } from 'discord.js';
-import moment from 'moment';
-import config from '../../../utils/reminders/config.js';
-import ReminderManager from '../../../utils/reminders/reminder-manager.js';
-import logger from '../../../utils/logger.js';
+import { SlashCommandBuilder } from "discord.js";
+import moment from "moment";
+import config from "../../../utils/reminders/config.js";
+import ReminderManager from "../../../utils/reminders/reminder-manager.js";
+import logger from "../../../utils/logger.js";
 
 export default {
   data: new SlashCommandBuilder()
-    .setName('reminder')
-    .setDescription('Create or manage custom reminders.')
-    .addSubcommand(subcommand => subcommand
-      .setName('create')
-      .setDescription('Create a new reminder to send in the future.')
-      .addIntegerOption(option => option
-        .setName('time')
-        .setDescription('The time to send the reminder. This should be a Unix Timestamp (Seconds). https://hammertime.cyou/')
-        .setRequired(true))
-      .addStringOption(option => option
-        .setName('message')
-        .setDescription('The message to send at the time specified.')
-        .setRequired(true))
-      .addMentionableOption(option => option
-        .setName('mention')
-        .setDescription('Who should be mentioned in this reminder?')),
+    .setName("reminder")
+    .setDescription("Create or manage custom reminders.")
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("create")
+        .setDescription("Create a new reminder to send in the future.")
+        .addIntegerOption((option) =>
+          option
+            .setName("time")
+            .setDescription("The time to send the reminder. This should be a Unix Timestamp (Seconds). https://hammertime.cyou/")
+            .setRequired(true)
+        )
+        .addStringOption((option) =>
+          option
+            .setName("message")
+            .setDescription("The message to send at the time specified.")
+            .setRequired(true)
+        )
+        .addMentionableOption((option) =>
+          option
+            .setName("mention")
+            .setDescription("Who should be mentioned in this reminder?")
+        )
     )
-    .addSubcommand(subcommand => subcommand
-      .setName('list')
-      .setDescription('List all of your scheduled reminders.'),
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("list")
+        .setDescription("List all of your scheduled reminders.")
     )
-    .addSubcommand(subcommand => subcommand
-      .setName('cancel')
-      .setDescription('Cancel a reminder that is currently scheduled.')
-      .addStringOption(option => option
-        .setName('id')
-        .setDescription('The ID of the reminder to cancel. You can get this using the `/reminder list` command.')
-        .setRequired(true)),
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("cancel")
+        .setDescription("Cancel a reminder that is currently scheduled.")
+        .addStringOption((option) =>
+          option
+            .setName("id")
+            .setDescription("The ID of the reminder to cancel. You can get this using the `/reminder list` command.")
+            .setRequired(true)
+        )
     ),
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
@@ -41,8 +52,8 @@ export default {
     const subcommand = interaction.options.getSubcommand();
     logger.debug(`Resolving subcommand: ${subcommand}`);
 
-    if (subcommand === 'create') {
-      const time = interaction.options.getInteger('time');
+    if (subcommand === "create") {
+      const time = interaction.options.getInteger("time");
       if (time < moment().unix() || `${time}`.length !== 10) {
         await interaction.followUp({
           content: config.invalidTime(time),
@@ -51,8 +62,8 @@ export default {
         return;
       }
 
-      const mention = interaction.options.getMentionable('mention')?.toString();
-      const msg = interaction.options.getString('message');
+      const mention = interaction.options.getMentionable("mention")?.toString();
+      const msg = interaction.options.getString("message");
       const reminder = {
         id: interaction.id,
         unixTs: time,
@@ -73,7 +84,7 @@ export default {
           ephemeral: true,
         });
       }
-    } else if (subcommand === 'list') {
+    } else if (subcommand === "list") {
       const list = await ReminderManager.getReminders(interaction.user.id);
       if (!list?.length) {
         await interaction.followUp({
@@ -86,8 +97,8 @@ export default {
           ephemeral: true,
         });
       }
-    } else if (subcommand === 'cancel') {
-      const id = interaction.options.getString('id');
+    } else if (subcommand === "cancel") {
+      const id = interaction.options.getString("id");
       const resp = await ReminderManager.cancelReminder(id, interaction.user.id);
       if (!resp) {
         await interaction.followUp({
@@ -102,6 +113,7 @@ export default {
       }
     }
   },
+  // deno-lint-ignore require-await
   async error(interaction, error) {
     logger.error(`Error executing ${interaction.commandName}`);
     logger.error(error);

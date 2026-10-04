@@ -1,14 +1,13 @@
-import fetch from 'node-fetch';
-import { EmbedBuilder } from 'discord.js';
-import config from './config.js';
-import logger from '../logger.js';
+import { EmbedBuilder } from "discord.js";
+import config from "./config.js";
+import logger from "../logger.js";
 
 async function getFromUrl(etroUrl) {
   if (!etroUrl) {
     return null;
   }
 
-  const idIndex = etroUrl.lastIndexOf('/');
+  const idIndex = etroUrl.lastIndexOf("/");
   if (idIndex === -1) {
     return null;
   }
@@ -33,36 +32,36 @@ async function getFromId(etroId) {
 
     // Parse total params
     if (json.totalParams?.length > 0) {
-      json.totalParams = json.totalParams.map(p => {
+      json.totalParams = json.totalParams.map((p) => {
         p.id = Number.parseInt(p.id);
-        if (p.name.startsWith('Weapon')) {
-          p.name = 'WD';
+        if (p.name.startsWith("Weapon")) {
+          p.name = "WD";
         }
         return p;
       });
     }
 
     // Get item names from XIVAPI
-    const itemIds = Object.keys(config.augmentTokens).map(slot => json[slot]).join(',');
-    const xivApiUrl = `${config.apiUrl}/Item?private_key=${process.env.XIVAPI_TOKEN}&ids=${itemIds}&columns=Name,ID`;
+    const itemIds = Object.keys(config.augmentTokens).map((slot) => json[slot]).join(",");
+    const xivApiUrl = `${config.apiUrl}/Item?private_key=${Deno.env.get("XIVAPI_TOKEN")}&ids=${itemIds}&columns=Name,ID`;
     const itemNameMap = (await getJsonFromUrl(xivApiUrl))?.Results.reduce((p, c) => {
-      if (typeof c === 'object') {
+      if (typeof c === "object") {
         p[c.ID] = c.Name;
       }
       return p;
     }, {});
-    if (!itemNameMap) { return null; }
+    if (!itemNameMap) return null;
 
     // Add other etro info
     set.name = json.name;
     set.job = json.jobAbbrev;
-    set.params = json.totalParams?.filter(p => config.etroParams.statOrder.includes(p.id))
+    set.params = json.totalParams?.filter((p) => config.etroParams.statOrder.includes(p.id))
       .sort((a, b) => config.etroParams.statOrder.indexOf(a.id) - config.etroParams.statOrder.indexOf(b.id));
-    set.gcd = json.totalParams?.filter(p => p.name.startsWith(config.etroParams.gcd))
+    set.gcd = json.totalParams?.filter((p) => p.name.startsWith(config.etroParams.gcd))
       .sort((a, b) => a.name.localeCompare(b.name));
-    set.dmg = json.totalParams?.find(p => p.name === config.etroParams.dmg)?.value;
-    set.notes = json.notes?.replaceAll(/<(?:hr|\/(?:h[0-9]|p|li))>/g, '\n')?.replaceAll(/<[^<]+>/g, ' ').trim();
-    if (json.food && typeof json.food === 'number') {
+    set.dmg = json.totalParams?.find((p) => p.name === config.etroParams.dmg)?.value;
+    set.notes = json.notes?.replaceAll(/<(?:hr|\/(?:h[0-9]|p|li))>/g, "\n")?.replaceAll(/<[^<]+>/g, " ").trim();
+    if (json.food && typeof json.food === "number") {
       const foodJson = await getJsonFromUrl(`${config.etroFoodApiUrl}${json.food}`);
       if (foodJson) {
         set.food = foodJson.name;
@@ -78,7 +77,7 @@ async function getFromId(etroId) {
 
       if (!itemNameMap[itemId]) {
         return null;
-      } else if (itemNameMap[itemId].startsWith('Augmented')) {
+      } else if (itemNameMap[itemId].startsWith("Augmented")) {
         if (augType === config.tokenTypes.RIGHT) {
           set.rightTokens++;
         } else if (augType === config.tokenTypes.LEFT) {
@@ -88,24 +87,25 @@ async function getFromId(etroId) {
         }
         set.tomes += config.tomeCost[slot];
       } else {
-        const raidPiece = slot.startsWith('finger') ? 'ring' : slot;
+        const raidPiece = slot.startsWith("finger") ? "ring" : slot;
         if (!set.raidPieces.includes(raidPiece)) {
-          set.raidPieces.push(slot.startsWith('finger') ? 'ring' : slot);
+          set.raidPieces.push(slot.startsWith("finger") ? "ring" : slot);
         }
       }
 
       // Hack for non-augmented tome rings
       if (ringSlots.includes(slot)) {
         ringItemNames.push(itemNameMap[itemId]);
-        if (ringItemNames.length === 2 && ringItemNames[0] !== ringItemNames[1]
-          && (
-            (ringItemNames[0].startsWith('Augmented') && ringItemNames[0].endsWith(ringItemNames[1]))
-            || (ringItemNames[1].startsWith('Augmented') && ringItemNames[1].endsWith(ringItemNames[0]))
+        if (
+          ringItemNames.length === 2 && ringItemNames[0] !== ringItemNames[1] &&
+          (
+            (ringItemNames[0].startsWith("Augmented") && ringItemNames[0].endsWith(ringItemNames[1])) ||
+            (ringItemNames[1].startsWith("Augmented") && ringItemNames[1].endsWith(ringItemNames[0]))
           )
         ) {
           // Add an extra ring to the tome counter and remove it from raidPieces
           set.tomes += config.tomeCost[slot];
-          const idx = set.raidPieces.indexOf('ring');
+          const idx = set.raidPieces.indexOf("ring");
           if (idx >= 0) {
             set.raidPieces.splice(idx, 1);
           }
@@ -124,7 +124,7 @@ function getAsEmbed(etroSet) {
   const fields = [];
 
   if (etroSet.tomes > 0) {
-    fields.push({ name: 'Tomes', value: `${etroSet.tomes}`, inline: true });
+    fields.push({ name: "Tomes", value: `${etroSet.tomes}`, inline: true });
   }
   if (etroSet.leftTokens > 0) {
     fields.push({ name: config.tokenTypes.LEFT, value: `${etroSet.leftTokens}`, inline: true });
@@ -133,20 +133,20 @@ function getAsEmbed(etroSet) {
     fields.push({ name: config.tokenTypes.RIGHT, value: `${etroSet.rightTokens}`, inline: true });
   }
   if (etroSet.weaponToken) {
-    fields.push({ name: config.tokenTypes.WEAPON, value: '1', inline: true });
+    fields.push({ name: config.tokenTypes.WEAPON, value: "1", inline: true });
   }
 
   if (etroSet.dmg) {
     fields.push({ name: config.embedOptions.damageName, value: `${etroSet.dmg}`, inline: false });
   }
   if (etroSet.params?.length > 0) {
-    etroSet.params.forEach(p => {
+    etroSet.params.forEach((p) => {
       fields.push({ name: p.name, value: `${p.value}`, inline: true });
     });
   }
   if (etroSet.gcd?.length > 0) {
-    etroSet.gcd.forEach(p => {
-      fields.push({ name: p.name, value: `${p.value}${p.units ? p.units : ''}`, inline: true });
+    etroSet.gcd.forEach((p) => {
+      fields.push({ name: p.name, value: `${p.value}${p.units ? p.units : ""}`, inline: true });
     });
   }
   if (etroSet.food) {
@@ -157,8 +157,8 @@ function getAsEmbed(etroSet) {
   }
 
   const description = etroSet.raidPieces.reduce((acc, cur, i) => {
-    return `${acc}${cur.charAt(0).toUpperCase()}${cur.substr(1)}${i != etroSet.raidPieces.length - 1 ? ', ' : ''}`;
-  }, '');
+    return `${acc}${cur.charAt(0).toUpperCase()}${cur.substr(1)}${i != etroSet.raidPieces.length - 1 ? ", " : ""}`;
+  }, "");
   const embed = new EmbedBuilder()
     .setColor(config.embedOptions.color)
     .setThumbnail(`${config.embedOptions.thumbnailUrl}${etroSet.job}_Solid.png`)
@@ -168,7 +168,7 @@ function getAsEmbed(etroSet) {
       url: `${config.etroUrl}${etroSet.etroId}`,
     })
     .setTitle(config.embedOptions.title)
-    .setDescription(description.length > 0 ? description : 'None')
+    .setDescription(description.length > 0 ? description : "None")
     .addFields(fields);
   return embed;
 }

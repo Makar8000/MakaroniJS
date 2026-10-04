@@ -1,19 +1,20 @@
-import { SlashCommandBuilder } from 'discord.js';
-import etro from '../../../utils/ffxiv/etro.js';
-import logger from '../../../utils/logger.js';
+import { SlashCommandBuilder } from "discord.js";
+import etro from "../../../utils/ffxiv/etro.js";
+import logger from "../../../utils/logger.js";
 
 export default {
   data: new SlashCommandBuilder()
-    .setName('etro')
-    .setDescription('Parse currency required to obtain an etro set.')
-    .addStringOption(option => option
-      .setName('etro-link')
-      .setDescription('The link to the etro set.')
-      .setRequired(true),
+    .setName("etro")
+    .setDescription("Parse currency required to obtain an etro set.")
+    .addStringOption((option) =>
+      option
+        .setName("etro-link")
+        .setDescription("The link to the etro set.")
+        .setRequired(true)
     ),
   async execute(interaction) {
     await interaction.deferReply();
-    const etroUrl = interaction.options.getString('etro-link');
+    const etroUrl = interaction.options.getString("etro-link");
     const etroSet = await etro.getFromUrl(etroUrl);
 
     if (etroSet) {
@@ -22,11 +23,12 @@ export default {
       });
     } else {
       interaction.followUp({
-        content: 'Network error or invalid etro url provided.',
+        content: "Network error or invalid etro url provided.",
         ephemeral: true,
       });
     }
   },
+  // deno-lint-ignore require-await
   async error(interaction, error) {
     logger.error(`Error executing ${interaction.commandName}`);
     logger.error(error);

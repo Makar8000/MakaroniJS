@@ -1,7 +1,7 @@
 const tokenTypes = Object.freeze({
-  WEAPON: 'Ester',
-  LEFT: 'Twine(s)',
-  RIGHT: 'Shine(s)',
+  WEAPON: "Ester",
+  LEFT: "Twine(s)",
+  RIGHT: "Shine(s)",
 });
 
 const augmentTokens = Object.freeze({
@@ -51,13 +51,17 @@ const defaultEtroSet = Object.freeze({
 });
 
 const etroParams = Object.freeze({
-  dmg: 'Damage (Expected)',
-  gcd: 'GCD',
+  dmg: "Damage (Expected)",
+  gcd: "GCD",
   statOrder: [
     // Weapon
-    12, 13,
+    12,
+    13,
     // Primary
-    1, 2, 4, 5,
+    1,
+    2,
+    4,
+    5,
     // Vitality
     3,
     // Critical Hit
@@ -67,27 +71,30 @@ const etroParams = Object.freeze({
     // Determination
     44,
     // SPS & SKS
-    45, 46,
+    45,
+    46,
     // Piety & Tenacity
-    19, 6,
+    19,
+    6,
   ],
 });
 
 const embedOptions = Object.freeze({
   color: 0xB460A6,
-  name: 'Etro Data',
-  title: 'Non-Tome Pieces',
-  iconUrl: 'https://etro.gg/favicon.png',
-  thumbnailUrl: 'https://raw.githubusercontent.com/anoyetta/ACT.Hojoring/master/source/ACT.SpecialSpellTimer/ACT.SpecialSpellTimer.Core/resources/icon/Job/',
-  damageName: 'Damage per 100 Potency',
-  foodName: 'Food',
-  noteName: 'Notes',
+  name: "Etro Data",
+  title: "Non-Tome Pieces",
+  iconUrl: "https://etro.gg/favicon.png",
+  thumbnailUrl:
+    "https://raw.githubusercontent.com/anoyetta/ACT.Hojoring/master/source/ACT.SpecialSpellTimer/ACT.SpecialSpellTimer.Core/resources/icon/Job/",
+  damageName: "Damage per 100 Potency",
+  foodName: "Food",
+  noteName: "Notes",
 });
 
 export default {
   // Etro
-  etroApiUrl: 'http://etro.gg/api/gearsets/',
-  etroFoodApiUrl: 'https://etro.gg/api/food/',
+  etroApiUrl: "http://etro.gg/api/gearsets/",
+  etroFoodApiUrl: "https://etro.gg/api/food/",
   defaultEtroSet,
   tokenTypes,
   etroParams,
@@ -95,9 +102,9 @@ export default {
   tomeCost,
 
   // XIVAPI
-  apiUrl: 'http://xivapi.com',
+  apiUrl: "http://xivapi.com",
 
   // Embed Config
   embedOptions,
-  etroUrl: 'https://etro.gg/gearset/',
+  etroUrl: "https://etro.gg/gearset/",
 };

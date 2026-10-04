@@ -1,5 +1,4 @@
-import fetch from 'node-fetch';
-import logger from '../logger.js';
+import logger from "../logger.js";
 
 /**
  * Creates a new W2G room.
@@ -11,19 +10,19 @@ import logger from '../logger.js';
 async function createRoom(url) {
   try {
     const body = {
-      w2g_api_key: `${process.env.W2G_KEY}`,
-      bg_color: '#1F1F1F',
-      bg_opacity: '100',
+      w2g_api_key: `${Deno.env.get("W2G_KEY")}`,
+      bg_color: "#1F1F1F",
+      bg_opacity: "100",
     };
     if (url) {
       body.share = `${url}`;
     }
 
-    const resp = await fetch('https://api.w2g.tv/rooms/create.json', {
-      method: 'POST',
+    const resp = await fetch("https://api.w2g.tv/rooms/create.json", {
+      method: "POST",
       headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
+        "Accept": "application/json",
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
     });
@@ -57,22 +56,22 @@ async function createRoom(url) {
 async function addToRoom(streamkey, url, opts) {
   try {
     const body = {
-      w2g_api_key: `${process.env.W2G_KEY}`,
+      w2g_api_key: `${Deno.env.get("W2G_KEY")}`,
     };
     const item = {
       url: `${url}`,
     };
 
-    if (typeof opts.title === 'string') {
+    if (typeof opts.title === "string") {
       item.title = opts.title;
     }
 
     body.add_items = [item];
     const resp = await fetch(`https://api.w2g.tv/rooms/${streamkey}/playlists/current/playlist_items/sync_update`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
+        "Accept": "application/json",
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
     });

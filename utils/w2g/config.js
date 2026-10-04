@@ -1,14 +1,14 @@
-import { EmbedBuilder } from 'discord.js';
-import moment from 'moment';
-import { getDiscordStr } from '../common.js';
+import { EmbedBuilder } from "discord.js";
+import moment from "moment";
+import { getDiscordStr } from "../common.js";
 
 const embedOptions = Object.freeze({
   color: 0xFBCD3B,
-  title: 'Click to join!',
-  thumbnailUrl: 'https://static.w2g.tv/static/watch2gether-share.jpg',
-  fieldVideoUrl: 'Video URL',
-  fieldRoomUrl: 'Room URL',
-  fieldId: 'Room ID',
+  title: "Click to join!",
+  thumbnailUrl: "https://static.w2g.tv/static/watch2gether-share.jpg",
+  fieldVideoUrl: "Video URL",
+  fieldRoomUrl: "Room URL",
+  fieldId: "Room ID",
 });
 
 const createGeneric = (roomUrl, videoUrl, key, user, msg) => {
@@ -36,35 +36,35 @@ const createGeneric = (roomUrl, videoUrl, key, user, msg) => {
 };
 
 const createSuccess = (roomUrl, videoUrl, key, user) => {
-  return createGeneric(roomUrl, videoUrl, key, user, 'has created a W2G Room!');
+  return createGeneric(roomUrl, videoUrl, key, user, "has created a W2G Room!");
 };
 
 const addSuccess = (roomUrl, videoUrl, key, user) => {
-  return createGeneric(roomUrl, videoUrl, key, user, 'has added a video!');
+  return createGeneric(roomUrl, videoUrl, key, user, "has added a video!");
 };
 
 const embedOptionsAnime = Object.freeze({
   color: 0x009FEE,
-  title: 'Click to join!',
-  thumbnailUrl: 'https://static.w2g.tv/static/watch2gether-share.jpg',
-  fieldRoomUrl: 'Room URL',
-  fieldId: 'Room ID',
-  fieldGenres: 'Genres',
-  fieldType: 'Type',
-  fieldAired: 'Aired',
-  fieldStatus: 'Status',
-  fieldRating: 'Rating',
-  fieldExternalLinks: 'External Links & More Info',
+  title: "Click to join!",
+  thumbnailUrl: "https://static.w2g.tv/static/watch2gether-share.jpg",
+  fieldRoomUrl: "Room URL",
+  fieldId: "Room ID",
+  fieldGenres: "Genres",
+  fieldType: "Type",
+  fieldAired: "Aired",
+  fieldStatus: "Status",
+  fieldRating: "Rating",
+  fieldExternalLinks: "External Links & More Info",
   mappings: {
     mal: {
-      urlPrefix: 'https://myanimelist.net/anime/',
-      name: 'MyAnimeList',
-      hover: 'View on MyAnimeList',
+      urlPrefix: "https://myanimelist.net/anime/",
+      name: "MyAnimeList",
+      hover: "View on MyAnimeList",
     },
     anilist: {
-      urlPrefix: 'https://anilist.co/anime/',
-      name: 'AniList',
-      hover: 'View on AniList',
+      urlPrefix: "https://anilist.co/anime/",
+      name: "AniList",
+      hover: "View on AniList",
     },
   },
 });
@@ -76,26 +76,26 @@ const createGenericAnime = (animeInfo, user, msg) => {
     if (animeInfo.genres?.length > 0) {
       fields.push({
         name: embedOptionsAnime.fieldGenres,
-        value: `${animeInfo.genres.join(', ')}`,
+        value: `${animeInfo.genres.join(", ")}`,
       });
     }
-    if (typeof animeInfo.type === 'string') {
+    if (typeof animeInfo.type === "string") {
       fields.push({
         name: embedOptionsAnime.fieldType,
         value: `${animeInfo.type}`,
         inline: true,
       });
     }
-    if (typeof animeInfo.startDate?.day === 'number') {
-      const start = moment(`${animeInfo.startDate?.year}-${animeInfo.startDate?.month}-${animeInfo.startDate?.day}`, 'YYYY-M-D');
-      const end = moment(`${animeInfo.endDate?.year}-${animeInfo.endDate?.month}-${animeInfo.endDate?.day}`, 'YYYY-M-D');
+    if (typeof animeInfo.startDate?.day === "number") {
+      const start = moment(`${animeInfo.startDate?.year}-${animeInfo.startDate?.month}-${animeInfo.startDate?.day}`, "YYYY-M-D");
+      const end = moment(`${animeInfo.endDate?.year}-${animeInfo.endDate?.month}-${animeInfo.endDate?.day}`, "YYYY-M-D");
       fields.push({
         name: embedOptionsAnime.fieldAired,
-        value: `${start.isValid() ? start.format('MMM Mo, YYYY') : '???'} - ${end.isValid() ? end.format('MMM Mo, YYYY') : '???'}`,
+        value: `${start.isValid() ? start.format("MMM Mo, YYYY") : "???"} - ${end.isValid() ? end.format("MMM Mo, YYYY") : "???"}`,
         inline: true,
       });
     }
-    if (typeof animeInfo.rating === 'number') {
+    if (typeof animeInfo.rating === "number") {
       fields.push({
         name: embedOptionsAnime.fieldRating,
         value: `${animeInfo.rating}/100`,
@@ -113,7 +113,7 @@ const createGenericAnime = (animeInfo, user, msg) => {
     if (externalSources.length > 0) {
       fields.push({
         name: embedOptionsAnime.fieldExternalLinks,
-        value: `${externalSources.join(', ')}`,
+        value: `${externalSources.join(", ")}`,
       });
     }
     fields.push({ name: embedOptionsAnime.fieldId, value: `\`${animeInfo.roomId}\`` });
@@ -128,7 +128,7 @@ const createGenericAnime = (animeInfo, user, msg) => {
       .setThumbnail(animeInfo.image)
       .setImage(animeInfo.cover)
       .setTitle(`${getDiscordStr(animeInfo.title.romaji, 216)} - Episode ${animeInfo.episodeNumber}`)
-      .setDescription(`${getDiscordStr(animeInfo.description.replaceAll(/<br\s?\/?>/g, '').replaceAll(/\n\n\(Source:\s[^)]+\).*$/gs, ''), 4095)}`)
+      .setDescription(`${getDiscordStr(animeInfo.description.replaceAll(/<br\s?\/?>/g, "").replaceAll(/\n\n\(Source:\s[^)]+\).*$/gs, ""), 4095)}`)
       .setURL(`${animeInfo.roomUrl}`)
       .addFields(fields)
       .setTimestamp();
@@ -139,11 +139,11 @@ const createGenericAnime = (animeInfo, user, msg) => {
 };
 
 const createSuccessAnime = (animeInfo, user) => {
-  return createGenericAnime(animeInfo, user, 'has created an Anime room!');
+  return createGenericAnime(animeInfo, user, "has created an Anime room!");
 };
 
 const addSuccessAnime = (animeInfo, user) => {
-  return createGenericAnime(animeInfo, user, 'has added an episode!');
+  return createGenericAnime(animeInfo, user, "has added an episode!");
 };
 
 export default {
