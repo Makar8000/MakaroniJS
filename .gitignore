@@ -1,4 +1,5 @@
 node_modules
+.clinerules
 .env
 *.db
 test/
