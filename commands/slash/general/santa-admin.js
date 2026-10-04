@@ -1,5 +1,6 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { MessageFlags, SlashCommandBuilder } from 'discord.js';
 import SantaManager from '../../../utils/santa/santa-manager.js';
+import SantaMessaging from '../../../utils/santa/santa-interactions.js';
 import config from '../../../config.js';
 import logger from '../../../utils/logger.js';
 
@@ -60,121 +61,106 @@ export default {
     if (!config.users.admins.includes(interaction.user.id)) {
       await interaction.reply({
         content: 'You do not have permission to run this command.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
 
     if (subcommand === 'start' || subcommand === 'reset') {
-      await interaction.deferReply({ ephemeral: true });
-      if (subcommand === 'start' && !(await SantaManager.started())) {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      if (subcommand === 'start' && !SantaManager.started()) {
         const resp = await SantaManager.start(client);
         if (resp) {
+          const failedMsg = resp.failed.length
+            ? `\n[WARNING] Could not DM: ${resp.failed.map(id => `<@${id}>`).join(' ')}`
+            : '';
           await interaction.followUp({
-            content: 'Secret Santa has been started.',
-            ephemeral: true,
+            content: `Secret Santa has been started.${failedMsg}`,
+            flags: MessageFlags.Ephemeral,
+            allowedMentions: { parse: [] },
           });
         } else {
           await interaction.followUp({
             content: 'Not enough users are registered to start.',
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         }
       } else if (subcommand === 'reset') {
-        await SantaManager.reset();
+        SantaManager.reset();
         await interaction.followUp({
           content: 'Secret Santa has been reset.',
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       } else {
         await interaction.followUp({
           content: `[ERROR] The Secret Santa session is already in the state you are trying to set. Failed to ${subcommand}.`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     } else if (subcommand === 'list') {
-      const santaList = await SantaManager.getAll();
+      const santaList = SantaManager.getAll();
       const msg = santaList.reduce((list, santa) => `${list}  <@${santa.discordId}>`, '').trim();
       await interaction.reply({
         content: `Santas Registered: ${msg}`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     } else if (subcommand === 'blacklist') {
-      const blacklists = await SantaManager.getBlacklists();
+      const blacklists = SantaManager.getBlacklists();
       const msg = Object.entries(blacklists).reduce((m, [santa, recList]) => `${m}\n<@${santa}>  \u2192  ${recList.map(r => `<@${r}>`).join('  ')}`, '').trim();
       await interaction.reply({
         content: `Santa \u2192 Banned Receiver\n${msg}`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     } else if (subcommand === 'selectedlist') {
-      if (await SantaManager.started()) {
-        const selectedPairs = await SantaManager.getSelectedPairs();
+      if (SantaManager.started()) {
+        const selectedPairs = SantaManager.getSelectedPairs();
         const msg = Object.entries(selectedPairs).reduce((m, [santa, rec]) => `${m}\n\uD83C\uDF85 <@${santa}> \u27F6 \uD83C\uDF81 <@${rec}>`, '').trim();
         const isEphemeral = !interaction.options.getBoolean('public');
         await interaction.reply({
           content: msg,
-          ephemeral: isEphemeral,
+          flags: isEphemeral ? MessageFlags.Ephemeral : undefined,
+          allowedMentions: { parse: [] },
         });
       } else {
         await interaction.reply({
           content: '[ERROR] The Secret Santa session has not started yet. There are no pairs.',
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     } else if (subcommand === 'config') {
       const key = interaction.options.getString('key');
       const value = interaction.options.getString('value');
-      const updated = await SantaManager.updateConfig(key, value);
+      const updated = SantaManager.updateConfig(key, value);
       if (updated) {
         await interaction.reply({
           content: `Config key \`${key}\` has been updated to \`${value}\`.`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       } else {
-        const currentConfig = await SantaManager.getConfig();
+        const currentConfig = SantaManager.getConfig();
         const existingKeys = Object.keys(currentConfig).join(', ');
         await interaction.reply({
           content: `[ERROR] Config key \`${key}\` does not exist. Existing keys: ${existingKeys}`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     } else if (subcommand === 'giftlist') {
-      if (await SantaManager.started()) {
-        const giftTrackingList = await SantaManager.getGiftTrackingList();
-        const friendlyStatus = {
-          'NOT_SENT': '❌ Not Sent',
-          'SENT': '📦 Sent',
-          'DELIVERED': '🎁 Delivered',
-        };
-        const msg = giftTrackingList.reduce((m, item) => `${m}\n<@${item.receiver_id}>'s Santa Gift Status: **${friendlyStatus[item.gift_status]}** (<t:${item.gift_status_timestamp}:F>)`, '').trim();
+      if (SantaManager.started()) {
+        const giftTrackingList = SantaManager.getGiftTrackingList();
+        const msg = giftTrackingList.reduce((m, item) => `${m}\n<@${item.receiver_id}>'s Santa Gift Status: **${SantaMessaging.GIFT_STATUS_LABEL[item.gift_status]}** (<t:${item.gift_status_timestamp}:F>)`, '').trim();
         const isEphemeral = !interaction.options.getBoolean('public');
         await interaction.reply({
           content: msg || 'No tracking records found.',
-          ephemeral: isEphemeral,
+          flags: isEphemeral ? MessageFlags.Ephemeral : undefined,
+          allowedMentions: { parse: [] },
         });
       } else {
         await interaction.reply({
           content: '[ERROR] The Secret Santa session has not started yet.',
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     }
   },
-  async error(interaction, error) {
-    logger.error(`Error executing ${interaction.commandName ?? interaction.customId}`);
-    logger.error(error);
-    const payload = {
-      content: '[ERROR] Something went wrong while processing your request. Please try again.',
-      ephemeral: true,
-    };
-    try {
-      if (interaction.deferred || interaction.replied) {
-        await interaction.followUp(payload);
-      } else {
-        await interaction.reply(payload);
-      }
-    } catch (notifyError) {
-      logger.error('Failed to notify user of the above error:', notifyError);
-    }
-  },
+  error: SantaMessaging.handleError,
 };

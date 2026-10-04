@@ -5,6 +5,7 @@ import { EmbedBuilder } from 'discord.js';
 import LLMManager from '../llm/llm-manager.js';
 import JSON5 from 'json5';
 import config from '../../config.js';
+import logger from '../logger.js';
 
 const db = new Database('./data/secretsanta.db');
 db.pragma('foreign_keys = ON');
@@ -18,7 +19,7 @@ db.pragma('foreign_keys = ON');
  *  True if this user is registered.
  *  False otherwise.
  */
-async function isRegistered(user) {
+function isRegistered(user) {
   const stmt = db.prepare('SELECT 1 FROM participants WHERE discord_id = ?');
   return !!stmt.get(user);
 }
@@ -30,7 +31,7 @@ async function isRegistered(user) {
  * @returns
  *  The participant's { discordId, name, address, notes }, or undefined if not registered.
  */
-async function getParticipant(discordId) {
+function getParticipant(discordId) {
   const row = db.prepare('SELECT discord_id AS discordId, name, address, notes FROM participants WHERE discord_id = ?').get(discordId);
   return row;
 }
@@ -43,8 +44,8 @@ async function getParticipant(discordId) {
  *  True if this santa is new.
  *  False if modifying an existing santa.
  */
-async function addSanta(santa) {
-  const existing = await isRegistered(santa.discordId);
+function addSanta(santa) {
+  const existing = isRegistered(santa.discordId);
   const stmt = db.prepare(`
     INSERT INTO participants (discord_id, name, address, notes)
     VALUES (?, ?, ?, ?)
@@ -65,7 +66,7 @@ async function addSanta(santa) {
  *  True if this santa was removed.
  *  False if this santa didn't exist.
  */
-async function removeSanta(santa) {
+function removeSanta(santa) {
   const stmt = db.prepare('DELETE FROM participants WHERE discord_id = ?');
   const result = stmt.run(santa);
   return result.changes > 0;
@@ -75,7 +76,7 @@ async function removeSanta(santa) {
  * Gets the number of registered santas.
  * @returns The number of registered santas.
  */
-async function size() {
+function size() {
   const row = db.prepare('SELECT COUNT(*) AS count FROM participants').get();
   return row.count;
 }
@@ -88,8 +89,8 @@ async function size() {
  *  The Discord ID of the receiver for the specified santa.
  *  Returns undefined if the game is not started OR if this santa doesn't have a receiver.
  */
-async function getReceiver(santa) {
-  if (!(await started())) {
+function getReceiver(santa) {
+  if (!started()) {
     return undefined;
   }
   const row = db.prepare('SELECT receiver_id FROM pairings WHERE santa_id = ?').get(santa);
@@ -103,8 +104,8 @@ async function getReceiver(santa) {
  * @returns
  *  The Discord ID of the santa for this receiver.
  */
-async function getSanta(receiver) {
-  if (!(await started())) {
+function getSanta(receiver) {
+  if (!started()) {
     return undefined;
   }
   const row = db.prepare('SELECT santa_id FROM pairings WHERE receiver_id = ?').get(receiver);
@@ -117,7 +118,7 @@ async function getSanta(receiver) {
  *  True if this Secret Santa session has started.
  *  False if this Secret Santa session is NOT started.
  */
-async function started() {
+function started() {
   const row = db.prepare("SELECT value FROM config WHERE key = 'game_started'").get();
   return row?.value === 'true';
 }
@@ -127,7 +128,7 @@ async function started() {
  * @returns
  *  The Discord ID of the channel used for this Secret Santa session.
  */
-async function getChannelId() {
+function getChannelId() {
   const row = db.prepare("SELECT value FROM config WHERE key = 'channel_id'").get();
   return row?.value;
 }
@@ -138,7 +139,7 @@ async function getChannelId() {
  *  True if rp-mode selection is enabled.
  *  False if the default rp-mode should always be used instead.
  */
-async function isRpModeSelectionAllowed() {
+function isRpModeSelectionAllowed() {
   const row = db.prepare("SELECT value FROM config WHERE key = 'rp_mode_selection_allowed'").get();
   return row?.value === 'true';
 }
@@ -149,7 +150,7 @@ async function isRpModeSelectionAllowed() {
  * @returns
  *  The default rp style ('URIANGER', 'SIMPLE', or 'DISABLED').
  */
-async function getDefaultRpMode() {
+function getDefaultRpMode() {
   const row = db.prepare("SELECT value FROM config WHERE key = 'default_rp_mode'").get();
   return row?.value;
 }
@@ -164,7 +165,7 @@ async function getDefaultRpMode() {
  *  True if the update was successful.
  *  False otherwise.
  */
-async function updateGiftStatus(santaId, status) {
+function updateGiftStatus(santaId, status) {
   const unixTimestamp = Math.floor(Date.now() / 1000);
   const stmt = db.prepare(`
     UPDATE pairings
@@ -179,16 +180,23 @@ async function updateGiftStatus(santaId, status) {
  * Gets a tracking list of all gift statuses and timestamps.
  * @returns {Array} An array of pairing tracking objects.
  */
-async function getGiftTrackingList() {
+function getGiftTrackingList() {
   const rows = db.prepare('SELECT receiver_id, gift_status, gift_status_timestamp FROM pairings').all();
   return rows;
 }
 
+// Directions where the sender is roleplaying as Santa, so the rp-mode transform applies.
+const DIRECTIONS_WITH_RP_MODE = new Set(['SANTA_TO_RECEIVER', 'SANTA_TO_PUBLIC', 'SANTA_TO_USER']);
+
 // Directions whose conversation history should be fetched for LLM context in transformMessage.
 const DIRECTIONS_WITH_HISTORY = new Set(['SANTA_TO_RECEIVER', 'SANTA_TO_USER']);
 
+// Max number of recent messages passed to the LLM as conversation context.
+const HISTORY_LIMIT = 30;
+
 /**
  * Transforms the provided message using conversation history context if applicable.
+ * Directions that aren't roleplayed as Santa (see DIRECTIONS_WITH_RP_MODE) return the text as-is.
  * @param {String} senderId
  *  The Discord ID of the user sending the message.
  * @param {String} targetId
@@ -203,15 +211,15 @@ const DIRECTIONS_WITH_HISTORY = new Set(['SANTA_TO_RECEIVER', 'SANTA_TO_USER']);
  *  The post-processed or translated text string.
  */
 async function transformMessage(senderId, targetId, direction, text, rpMode) {
-  // Disabled RP mode sends the raw message without any LLM processing.
-  if (!rpMode || rpMode === 'DISABLED') {
+  // Non-Santa directions and disabled RP mode send the raw message without any LLM processing.
+  if (!DIRECTIONS_WITH_RP_MODE.has(direction) || !rpMode || rpMode === 'DISABLED') {
     return text;
   }
 
   let formattedHistory = [];
 
   if (DIRECTIONS_WITH_HISTORY.has(direction)) {
-    const history = await getConversationHistory(senderId, targetId);
+    const history = getConversationHistory(senderId, targetId, HISTORY_LIMIT);
 
     // Format the database history records into standard LLM conversation objects.
     // Sender is 'assistant' role, Target is 'user' role
@@ -226,31 +234,21 @@ async function transformMessage(senderId, targetId, direction, text, rpMode) {
 }
 
 /**
- * Logs a message to the database and applies a transformation filter if applicable.
+ * Logs a message to the database. Call only after the message was delivered successfully.
  * @param {String} senderId
  *  The Discord ID of the user sending the message.
  * @param {String} targetId
  *  The Discord ID of the message's recipient.
- * @param {String} direction
- *  The direction of the message.
  * @param {String} originalText
  *  The original raw content submitted by the user.
- * @param {String} rpMode
- *  (Optional) The RP mode to use for translation. Defaults to no rp.
- * @returns
- *  The transformed text if filtered, or the original text string.
+ * @param {String} processedText
+ *  The text that was actually sent.
  */
-async function logAndTransformMessage(senderId, targetId, direction, originalText, rpMode) {
-  let processedText = originalText;
-  if (direction === 'SANTA_TO_RECEIVER' || direction === 'SANTA_TO_PUBLIC' || direction === 'SANTA_TO_USER') {
-    processedText = await transformMessage(senderId, targetId, direction, originalText, rpMode);
-  }
-  const stmt = db.prepare(`
+function logMessage(senderId, targetId, originalText, processedText) {
+  db.prepare(`
     INSERT INTO message_history (sender_id, target_id, original_content, processed_content)
     VALUES (?, ?, ?, ?)
-  `);
-  stmt.run(senderId, targetId, originalText, processedText);
-  return processedText;
+  `).run(senderId, targetId, originalText, processedText);
 }
 
 /**
@@ -264,50 +262,52 @@ async function logAndTransformMessage(senderId, targetId, direction, originalTex
  * @returns
  *  An array of history transaction ledger entries sorted chronologically.
  */
-async function getConversationHistory(senderId, targetId, limit = -1) {
+function getConversationHistory(senderId, targetId, limit = -1) {
   const stmt = db.prepare(`
     SELECT sender_id, target_id, original_content, processed_content, timestamp
     FROM message_history
     WHERE
       (sender_id = ? AND target_id = ?)
       OR (sender_id = ? AND target_id = ?)
-    ORDER BY timestamp DESC
+    ORDER BY message_id DESC
     LIMIT ?
   `);
   return stmt.all(senderId, targetId, targetId, senderId, limit).reverse();
 }
 
 /**
- * Sets the state of the Secret Santa session as started.
+ * Sets the state of the Secret Santa session as started and DMs every santa their receiver.
  * @returns
- *  True if successfully started. False otherwise.
+ *  False if no valid pairing could be made.
+ *  Otherwise an object { failed } listing the Discord IDs of santas who could not be DMed.
  */
 async function start(client) {
-  const santas = await getAll(true);
+  const santas = getAll(true);
   if (!santas.length) {
     return false;
   }
 
+  const insertPair = db.prepare('INSERT INTO pairings (santa_id, receiver_id) VALUES (?, ?)');
   const transaction = db.transaction((pairingsList) => {
     // Automatically wipe existing pairings right before inserting new ones
     db.prepare('DELETE FROM pairings').run();
 
     for (const pair of pairingsList) {
-      const stmt = db.prepare('INSERT INTO pairings (santa_id, receiver_id) VALUES (?, ?)');
-      stmt.run(pair.discordId, pair.receiver.discordId);
+      insertPair.run(pair.discordId, pair.receiver.discordId);
     }
     db.prepare("INSERT INTO config (key, value) VALUES ('game_started', 'true') ON CONFLICT(key) DO UPDATE SET value = 'true'").run();
   });
   transaction(santas);
 
-  for (const santa of santas) {
-    const santaUser = await client.users.fetch(santa.discordId);
-    const receiverUser = await client.users.fetch(santa.receiver.discordId);
-    santaUser.send({
-      embeds: [getEmbedForSanta(receiverUser, santa.receiver)],
-    });
-  }
-  return true;
+  const results = await Promise.allSettled(santas.map(async (santa) => {
+    const [santaUser, receiverUser] = await Promise.all([
+      client.users.fetch(santa.discordId),
+      client.users.fetch(santa.receiver.discordId),
+    ]);
+    await santaUser.send({ embeds: [getEmbedForSanta(receiverUser, santa.receiver)] });
+  }));
+  const failed = santas.filter((_, i) => results[i].status === 'rejected').map(s => s.discordId);
+  return { failed };
 }
 
 /**
@@ -330,14 +330,14 @@ function getEmbedForSanta(user, registrationInfo) {
     inline: false,
   }, {
     name: 'Notes',
-    value: `${registrationInfo.notes}`,
+    value: `${registrationInfo.notes || 'None'}`,
     inline: false,
   }];
   const embed = new EmbedBuilder()
     .setColor(0x22E669)
     .setAuthor({
       name: `${user.displayName} was selected as your receiver!`,
-      iconURL: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`,
+      iconURL: user.displayAvatarURL(),
     })
     .setDescription('Send them a gift for Christmas :)')
     .addFields(fields);
@@ -354,7 +354,7 @@ function getEmbedForSanta(user, registrationInfo) {
  * @returns
  *  The Embed to send.
  */
-async function getEmbedForMessage(message, user) {
+function getEmbedForMessage(message, user) {
   if (!user || typeof user === 'string') {
     const row = db.prepare("SELECT value FROM config WHERE key = 'santa_avatar'").get();
     const avatarUrl = row?.value;
@@ -371,7 +371,7 @@ async function getEmbedForMessage(message, user) {
       .setColor(0xB377FF)
       .setAuthor({
         name: user.displayName,
-        iconURL: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`,
+        iconURL: user.displayAvatarURL(),
       })
       .setDescription(message);
     return embed;
@@ -381,7 +381,7 @@ async function getEmbedForMessage(message, user) {
 /**
  * Resets the state of the Secret Santa session.
  */
-async function reset() {
+function reset() {
   const transaction = db.transaction(() => {
     db.prepare('DELETE FROM pairings').run();
     db.prepare('DELETE FROM message_history').run();
@@ -396,13 +396,9 @@ async function reset() {
  * @param {Boolean} shouldShuffle Whether to randomly arrange participants.
  * @returns {Array} Santa objects, each with a .receiver property when shuffled.
  */
-async function getAll(shouldShuffle) {
+function getAll(shouldShuffle) {
   const santas = db.prepare('SELECT discord_id AS discordId, name, address, notes FROM participants').all();
   if (!shouldShuffle) return santas;
-  if (santas.length < 3) return [];
-
-  // the min size of an assignment chain/circle
-  const MIN_LOOP_SIZE = 3;
 
   // blacklist lookup: giver -> set of receivers they can't have
   const restrictions = db.prepare('SELECT giver_id, receiver_id FROM restricted_pairs').all();
@@ -416,57 +412,35 @@ async function getAll(shouldShuffle) {
   const receivers = [...santas];
   shuffle(receivers);
 
-  // helpers for tracking who's assigned to who
-  const santaIndexById = new Map(santas.map((santa, index) => [santa.discordId, index]));
-  const assignment = new Array(santas.length);
+  // santa id -> receiver object chosen so far
+  const givesTo = new Map();
   const usedReceivers = new Set();
-
-  // Makes sure every gifting loop is at least MIN_LOOP_SIZE long,
-  // otherwise two people could end up gifting directly to each other.
-  function hasOnlyValidLoops() {
-    const visited = new Array(santas.length).fill(false);
-    for (let i = 0; i < santas.length; i++) {
-      if (visited[i]) continue;
-
-      let loopLength = 0;
-      let current = i;
-      while (!visited[current]) {
-        visited[current] = true;
-        loopLength++;
-        const receiverId = receivers[assignment[current]].discordId;
-        current = santaIndexById.get(receiverId);
-      }
-
-      if (loopLength < MIN_LOOP_SIZE) return false;
-    }
-    return true;
-  }
 
   // Backtracking search to pair each santa with a valid receiver
   function assign(santaIndex) {
-    if (santaIndex === santas.length) return hasOnlyValidLoops();
+    if (santaIndex === santas.length) return true;
 
     const santa = santas[santaIndex];
 
-    for (let i = 0; i < receivers.length; i++) {
-      const receiver = receivers[i];
-
+    for (const receiver of receivers) {
       // already taken
       if (usedReceivers.has(receiver.discordId)) continue;
       // no self-gifting
       if (santa.discordId === receiver.discordId) continue;
       // blacklisted
       if (bannedMap.get(santa.discordId)?.has(receiver.discordId)) continue;
+      // no direct swaps (A <-> B); this is what makes every loop at least 3 long
+      if (givesTo.get(receiver.discordId)?.discordId === santa.discordId) continue;
 
       usedReceivers.add(receiver.discordId);
-      assignment[santaIndex] = i;
+      givesTo.set(santa.discordId, receiver);
 
       // try to pair the rest of the santas with this pick locked in
       if (assign(santaIndex + 1)) return true;
 
       // didn't work out, undo and try the next receiver
       usedReceivers.delete(receiver.discordId);
-      assignment[santaIndex] = undefined;
+      givesTo.delete(santa.discordId);
     }
     // no receiver worked for this santa
     return false;
@@ -474,7 +448,7 @@ async function getAll(shouldShuffle) {
 
   // start the search from the first santa
   if (assign(0)) {
-    return santas.map((santa, index) => ({ ...santa, receiver: receivers[assignment[index]] }));
+    return santas.map(santa => ({ ...santa, receiver: givesTo.get(santa.discordId) }));
   }
 
   // Return empty if restrictions make pairings mathematically impossible
@@ -486,7 +460,7 @@ async function getAll(shouldShuffle) {
  * @returns
  *  A map of the blacklisted pairs.
  */
-async function getBlacklists() {
+function getBlacklists() {
   const rows = db.prepare('SELECT giver_id, receiver_id FROM restricted_pairs').all();
   return rows.reduce((map, row) => {
     if (!map[row.giver_id]) {
@@ -502,7 +476,7 @@ async function getBlacklists() {
  * @returns
  *  A map of the selected pairs.
  */
-async function getSelectedPairs() {
+function getSelectedPairs() {
   const rows = db.prepare('SELECT santa_id, receiver_id FROM pairings').all();
   return rows.reduce((map, row) => {
     map[row.santa_id] = row.receiver_id;
@@ -511,60 +485,76 @@ async function getSelectedPairs() {
 }
 
 /**
- *
- * @returns
- *  A string representation of all the santas currently registered.
+ * Pre-fetches every participant into the client's cache, so interactions are faster.
+ * @param {Client} client The Discord client.
  */
-async function toString() {
-  const rows = db.prepare('SELECT name, discord_id, address, notes FROM participants').all();
-  return rows.map(s => `Name: ${s.name}\nDiscord ID: ${s.discord_id}\nAddress: ${s.address}\nNotes: ${s.notes}\n\n`).join('');
+async function warmUserCache(client) {
+  // Don't fetch unless Secret Santa is active
+  if (!started()) {
+    return;
+  }
+
+  const ids = getAll().map(santa => santa.discordId);
+  const found = new Set();
+
+  // Attempt to fetch using guild gateway first
+  const guild = client.guilds.cache.get(config.guilds.CANADALAND);
+  if (guild) {
+    try {
+      const members = await guild.members.fetch({ user: ids });
+      members.forEach(member => found.add(member.id));
+    } catch (err) {
+      logger.error('Bulk member fetch failed, falling back to per-user fetches:', err);
+    }
+  }
+
+  // A participant that still fails to fetch is simply left uncached and fetched on demand later.
+  await Promise.allSettled(ids.filter(id => !found.has(id)).map(id => client.users.fetch(id)));
 }
 
 /**
- * Loads the default santa config if one doesn't already exist
+ * Loads the default santa config. Only called when the DB hasn't been seeded yet.
  */
-async function initSantas() {
-  try {
-    const schemaPath = path.resolve('./utils/santa/ss-schema.sql');
-    if (fs.existsSync(schemaPath)) {
-      const schema = fs.readFileSync(schemaPath, 'utf8');
-      db.exec(schema);
-    }
+function seedDefaults() {
+  const santaConf = JSON5.parse(fs.readFileSync('./utils/santa/santas-default.jsonc', 'utf8'));
+  if (!santaConf.santaAvatar) {
+    throw new Error('No Santa avatar defined');
+  }
+  if (!santaConf.defaultRpMode) {
+    throw new Error('No default rp-mode defined');
+  }
 
-    // Validate whether or not the DB has been initialized
-    const hasInitializedConfig = db.prepare("SELECT 1 FROM config WHERE key = 'game_started'").get();
-    if (!hasInitializedConfig) {
-      // Set default config
-      const santaConfigPath = './utils/santa/santas-default.jsonc';
-      if (fs.existsSync(santaConfigPath)) {
-        const santaConf = JSON5.parse(fs.readFileSync(santaConfigPath, 'utf8'));
-        if (!santaConf.santaAvatar) {
-          throw new Error('No Santa avatar defined');
+  // One transaction so a failure part-way through can't leave a half-seeded config behind.
+  db.transaction(() => {
+    if (santaConf.blacklistedPairs) {
+      const insertPair = db.prepare('INSERT OR IGNORE INTO restricted_pairs (giver_id, receiver_id) VALUES (?, ?)');
+      for (const [giver, receivers] of Object.entries(santaConf.blacklistedPairs)) {
+        for (const receiver of receivers) {
+          insertPair.run(giver, receiver);
         }
-        if (!santaConf.defaultRpMode) {
-          throw new Error('No default rp-mode defined');
-        }
-        if (santaConf.blacklistedPairs) {
-          const insertPair = db.prepare('INSERT OR IGNORE INTO restricted_pairs (giver_id, receiver_id) VALUES (?, ?)');
-          for (const [giver, receivers] of Object.entries(santaConf.blacklistedPairs)) {
-            for (const receiver of receivers) {
-              insertPair.run(giver, receiver);
-            }
-          }
-        }
-
-        db.prepare("INSERT INTO config (key, value) VALUES ('game_started', 'false')").run();
-        db.prepare("INSERT INTO config (key, value) VALUES ('channel_id', ?)").run(config.channels.SECRET_SANTA);
-        db.prepare("INSERT INTO config (key, value) VALUES ('santa_avatar', ?)").run(santaConf.santaAvatar);
-        db.prepare("INSERT INTO config (key, value) VALUES ('rp_mode_selection_allowed', 'false')").run();
-        db.prepare("INSERT INTO config (key, value) VALUES ('default_rp_mode', ?)").run(santaConf.defaultRpMode);
-      } else {
-        throw new Error('No default config');
       }
     }
-  } catch (err) {
-    console.error('Failed to init database setup execution structure:', err);
+
+    db.prepare("INSERT INTO config (key, value) VALUES ('game_started', 'false')").run();
+    db.prepare("INSERT INTO config (key, value) VALUES ('channel_id', ?)").run(config.channels.SECRET_SANTA);
+    db.prepare("INSERT INTO config (key, value) VALUES ('santa_avatar', ?)").run(santaConf.santaAvatar);
+    db.prepare("INSERT INTO config (key, value) VALUES ('rp_mode_selection_allowed', 'false')").run();
+    db.prepare("INSERT INTO config (key, value) VALUES ('default_rp_mode', ?)").run(santaConf.defaultRpMode);
+  })();
+}
+
+/**
+ * Sets up Secret Santa. Called once from the ready event.
+ * - Initializes the database based on the default config.
+ * - Warms up the user cache so that interactions are faster.
+ * @param {Client} client The Discord client.
+ */
+function init(client) {
+  db.exec(fs.readFileSync(path.resolve('./utils/santa/ss-schema.sql'), 'utf8'));
+  if (!db.prepare("SELECT 1 FROM config WHERE key = 'game_started'").get()) {
+    seedDefaults();
   }
+  warmUserCache(client).catch(err => logger.error('Failed to warm the Secret Santa user cache:', err));
 }
 
 /**
@@ -572,7 +562,7 @@ async function initSantas() {
  * @returns
  *  A map of config key -> value.
  */
-async function getConfig() {
+function getConfig() {
   const rows = db.prepare('SELECT key, value FROM config').all();
   return rows.reduce((map, row) => {
     map[row.key] = row.value;
@@ -590,7 +580,7 @@ async function getConfig() {
  *  True if the key existed and was updated.
  *  False if the key does not exist.
  */
-async function updateConfig(key, value) {
+function updateConfig(key, value) {
   const stmt = db.prepare('UPDATE config SET value = ? WHERE key = ?');
   const result = stmt.run(value, key);
   return result.changes > 0;
@@ -611,6 +601,7 @@ function shuffle(array) {
 }
 
 export default {
+  DIRECTIONS_WITH_RP_MODE,
   isRegistered,
   getParticipant,
   addSanta,
@@ -624,15 +615,15 @@ export default {
   getDefaultRpMode,
   updateGiftStatus,
   getGiftTrackingList,
-  logAndTransformMessage,
+  transformMessage,
+  logMessage,
   start,
   getEmbedForMessage,
   reset,
   getAll,
   getBlacklists,
   getSelectedPairs,
-  toString,
-  initSantas,
+  init,
   getConfig,
   updateConfig,
 };

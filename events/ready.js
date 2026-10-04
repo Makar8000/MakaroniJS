@@ -2,6 +2,7 @@ import { Events } from 'discord.js';
 import logger from '../utils/logger.js';
 import ReminderManager from '../utils/reminders/reminder-manager.js';
 import HSRManager from '../utils/hsr/hsr-manager.js';
+import SantaManager from '../utils/santa/santa-manager.js';
 
 export default {
   name: Events.ClientReady,
@@ -10,5 +11,6 @@ export default {
     logger.info(`${client.user.username} is now ${client.user.presence.status}!`);
     ReminderManager.initJobs(client);
     HSRManager.initJobs(client);
+    SantaManager.init(client);
   },
 };

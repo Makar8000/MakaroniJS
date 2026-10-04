@@ -4,6 +4,7 @@ import {
   ButtonStyle,
   ModalBuilder,
   LabelBuilder,
+  MessageFlags,
   TextInputStyle,
   StringSelectMenuBuilder,
 } from 'discord.js';
@@ -30,7 +31,7 @@ const REPLY_DIRECTION = {
 };
 
 // Directions where the sender is roleplaying as Santa, so the rp-mode transform applies.
-const DIRECTIONS_WITH_RP_MODE = new Set(['SANTA_TO_RECEIVER', 'SANTA_TO_PUBLIC', 'SANTA_TO_USER']);
+const { DIRECTIONS_WITH_RP_MODE } = SantaManager;
 
 // Directions with no pairing to look up, so the target Discord ID must be carried in the customId instead.
 const DIRECTIONS_WITH_EXPLICIT_TARGET = new Set(['SANTA_TO_USER', 'USER_TO_SANTA']);
@@ -58,6 +59,13 @@ const REPLY_MODAL_TITLE = {
   USER_TO_SANTA: 'Reply Anonymously',
 };
 
+// Gift tracking milestone values -> friendly labels, used for the `/ss gift` choices and `/ss-admin giftlist`.
+const GIFT_STATUS_LABEL = {
+  NOT_SENT: '❌ Not Sent',
+  SENT: '📦 Sent',
+  DELIVERED: '🎁 Delivered',
+};
+
 const RP_MODE_CHOICES = [
   { name: 'Default', value: 'URIANGER' },
   { name: 'Simple', value: 'SIMPLE' },
@@ -78,11 +86,11 @@ async function resolveDestination(client, direction, senderId, explicitTargetId)
   }
   switch (direction) {
     case 'RECEIVER_TO_SANTA':
-      return client.users.fetch(await SantaManager.getSanta(senderId));
+      return client.users.fetch(SantaManager.getSanta(senderId));
     case 'SANTA_TO_RECEIVER':
-      return client.users.fetch(await SantaManager.getReceiver(senderId));
+      return client.users.fetch(SantaManager.getReceiver(senderId));
     case 'SANTA_TO_PUBLIC':
-      return client.channels.fetch(await SantaManager.getChannelId());
+      return client.channels.fetch(SantaManager.getChannelId());
     default:
       return undefined;
   }
@@ -92,15 +100,15 @@ async function resolveDestination(client, direction, senderId, explicitTargetId)
  * Builds the "Reply" button row for a sent message, or null if there should be no reply
  * @param {String} direction The direction of the message that was just sent.
  * @param {String} senderId The Discord ID of the user who sent the message.
- * @returns {Promise<?ActionRowBuilder>} The ActionRowBuilder containing the reply button, or null
+ * @returns {?ActionRowBuilder} The ActionRowBuilder containing the reply button, or null
  *  if not repliable.
  */
-async function buildReplyRow(direction, senderId) {
+function buildReplyRow(direction, senderId) {
   const replyDirection = REPLY_DIRECTION[direction];
   if (!replyDirection) {
     return null;
   }
-  const replyRpMode = DIRECTIONS_WITH_RP_MODE.has(replyDirection) ? await SantaManager.getDefaultRpMode() : 'DISABLED';
+  const replyRpMode = DIRECTIONS_WITH_RP_MODE.has(replyDirection) ? SantaManager.getDefaultRpMode() : 'DISABLED';
   const customId = `${COMMAND_NAME}:reply:${replyDirection}:${senderId}:${replyRpMode}`;
   const button = new ButtonBuilder()
     .setCustomId(customId)
@@ -152,7 +160,7 @@ function buildMessageLabel() {
  * @returns {Promise<ActionRowBuilder>} The ActionRowBuilder containing the target select menu.
  */
 async function buildTargetSelectRow(client, senderId) {
-  const receiver = await client.users.fetch(await SantaManager.getReceiver(senderId));
+  const receiver = await client.users.fetch(SantaManager.getReceiver(senderId));
   const select = new StringSelectMenuBuilder()
     .setCustomId(`${COMMAND_NAME}:msgtarget`)
     .setPlaceholder('Who do you want to message?')
@@ -185,18 +193,22 @@ function buildRpModeLabel(defaultRpMode) {
 /**
  * Builds the Label used to pick a target user, listing only registered participants other than
  * the sender.
+ * @param {Client} client The Discord client.
  * @param {String} senderId The Discord ID of the user composing the message, excluded from the list.
  * @returns {Promise<LabelBuilder>} The built LabelBuilder.
  */
-async function buildUserLabel(senderId) {
-  const santas = await SantaManager.getAll();
-  const eligible = santas.filter(santa => santa.discordId !== senderId);
+async function buildUserLabel(client, senderId) {
+  const santas = SantaManager.getAll();
+  // String Select supports a max of 25 options.
+  const eligible = santas.filter(santa => santa.discordId !== senderId).slice(0, 25);
   if (!eligible.length) {
     return null;
   }
 
-  // String Select supports a max of 25 options.
-  const options = eligible.slice(0, 25).map(santa => ({ label: santa.name, value: santa.discordId }));
+  const options = await Promise.all(eligible.map(async (santa) => {
+    const user = await client.users.fetch(santa.discordId).catch(() => null);
+    return { label: user?.displayName ?? 'Unknown user', value: santa.discordId };
+  }));
 
   return new LabelBuilder()
     .setLabel('Which user? (registered participants only)')
@@ -208,12 +220,13 @@ async function buildUserLabel(senderId) {
 
 /**
  * Builds the compose Modal for the target chosen from `/ss msg`'s select menu.
+ * @param {Client} client The Discord client.
  * @param {String} target The user-facing target choice ('SANTA', 'RECEIVER', 'CHANNEL', or 'USER').
  * @param {String} senderId The Discord ID of the user composing the message.
  * @returns {Promise<?ModalBuilder>} The built ModalBuilder, or null if target is 'USER' and there
  *  are no other registered participants to message.
  */
-async function buildComposeModal(target, senderId) {
+async function buildComposeModal(client, target, senderId) {
   const direction = TARGET_TO_DIRECTION[target];
   const modal = new ModalBuilder()
     .setCustomId(`${COMMAND_NAME}:msgmodal:${direction}`)
@@ -226,12 +239,12 @@ async function buildComposeModal(target, senderId) {
 
   // Only show the rp-mode selector when the feature flag allows picking it; otherwise the
   // configured default rp-mode is applied silently (see parseModalSubmission).
-  const rpModeLabel = (await SantaManager.isRpModeSelectionAllowed())
-    ? buildRpModeLabel(await SantaManager.getDefaultRpMode())
+  const rpModeLabel = SantaManager.isRpModeSelectionAllowed()
+    ? buildRpModeLabel(SantaManager.getDefaultRpMode())
     : null;
 
   if (target === 'USER') {
-    const userLabel = await buildUserLabel(senderId);
+    const userLabel = await buildUserLabel(client, senderId);
     if (!userLabel) {
       return null;
     }
@@ -304,10 +317,10 @@ function parseRegistrationSubmission(interaction) {
 /**
  * Parses a submitted compose or reply modal into the fields needed to send the message.
  * @param {ModalSubmitInteraction} interaction The modal submit interaction to parse.
- * @returns {Promise<{direction: String, targetId: ?String, rpMode: String, msg: String, error: ?String}>}
+ * @returns {{direction: String, targetId: ?String, rpMode: String, msg: String, error: ?String}>}
  *  The parsed submission, or an `error` message if the submission was invalid.
  */
-async function parseModalSubmission(interaction) {
+function parseModalSubmission(interaction) {
   const [, action, modalDirection, replyTargetId, replyRpMode] = interaction.customId.split(':');
   const msg = interaction.fields.getTextInputValue('message');
 
@@ -325,21 +338,21 @@ async function parseModalSubmission(interaction) {
   // RECEIVER_TO_SANTA has no rp-mode field, so rp-mode is disabled rather than defaulted.
   let rpMode = 'DISABLED';
   if (DIRECTIONS_WITH_RP_MODE.has(direction)) {
-    const selectionAllowed = await SantaManager.isRpModeSelectionAllowed();
+    const selectionAllowed = SantaManager.isRpModeSelectionAllowed();
     if (selectionAllowed) {
       // The modal has an rp-mode field; use whatever the user picked.
       rpMode = interaction.fields.getStringSelectValues('rp-mode')[0];
     }
     if (!selectionAllowed || !rpMode) {
       // Selection is disabled by config, or the user left it unselected.
-      rpMode = await SantaManager.getDefaultRpMode();
+      rpMode = SantaManager.getDefaultRpMode();
     }
   }
 
   let targetId;
   if (direction === 'SANTA_TO_USER') {
     const selectedUserId = interaction.fields.getStringSelectValues('user')[0];
-    if (!selectedUserId || selectedUserId === interaction.user.id || !(await SantaManager.isRegistered(selectedUserId))) {
+    if (!selectedUserId || selectedUserId === interaction.user.id || !SantaManager.isRegistered(selectedUserId)) {
       return {
         direction, targetId: undefined, rpMode, msg,
         error: 'Please select a valid, registered user (not yourself) when messaging a User.',
@@ -364,33 +377,35 @@ async function parseModalSubmission(interaction) {
 async function sendSantaMessage(interaction, direction, targetId, rpMode, msg) {
   const client = interaction.client;
   const destination = await resolveDestination(client, direction, interaction.user.id, targetId);
-  const modifiedText = await SantaManager.logAndTransformMessage(interaction.user.id, destination.id, direction, msg, rpMode);
+  const modifiedText = await SantaManager.transformMessage(interaction.user.id, destination.id, direction, msg, rpMode);
 
   let embedUser;
   if (direction === 'RECEIVER_TO_SANTA' || direction === 'USER_TO_SANTA') {
     // The santa already knows who the sender is in both cases, so it's safe to show their name.
     embedUser = interaction.user;
   } else if (direction === 'SANTA_TO_USER') {
-    const receiver = await client.users.fetch(await SantaManager.getReceiver(interaction.user.id));
+    const receiver = await client.users.fetch(SantaManager.getReceiver(interaction.user.id));
     embedUser = receiver.displayName;
   }
 
-  const embed = await SantaManager.getEmbedForMessage(modifiedText, embedUser);
+  const embed = SantaManager.getEmbedForMessage(modifiedText, embedUser);
   if (direction === 'SANTA_TO_PUBLIC') {
     embed.setTimestamp();
   }
 
-  const replyRow = await buildReplyRow(direction, interaction.user.id);
+  const replyRow = buildReplyRow(direction, interaction.user.id);
   await destination.send({
     embeds: [embed],
     components: replyRow ? [replyRow] : [],
   });
+  // Only logged once delivered, so failed sends never pollute the LLM conversation history.
+  SantaManager.logMessage(interaction.user.id, destination.id, msg, modifiedText);
 
   // Message is already sent; a failed DM copy to the sender (e.g. DMs disabled) is not an error.
   const contentOutput = `Sent the following message to ${DIRECTION_LABEL[direction]}:\n${modifiedText}\n\nOriginal:\n${msg}`;
   await interaction.followUp({
     content: 'Success',
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
   try {
     await interaction.user.send({
@@ -401,8 +416,34 @@ async function sendSantaMessage(interaction, direction, targetId, rpMode, msg) {
   }
 }
 
+/**
+ * Handles errors thrown by a Santa command's execute/button/selectMenu/modalSubmit, notifying the user.
+ * Shared by `/ss` and `/ss-admin` as their `error` handler.
+ * @param {Interaction} interaction The interaction that was being handled when the error occurred.
+ * @param {Error} error The error that was thrown.
+ */
+async function handleError(interaction, error) {
+  logger.error(`Error executing ${interaction.commandName ?? interaction.customId}`);
+  logger.error(error);
+  const payload = {
+    content: '[ERROR] Something went wrong while processing your request. Please try again.',
+    flags: MessageFlags.Ephemeral,
+  };
+  try {
+    if (interaction.deferred || interaction.replied) {
+      await interaction.followUp(payload);
+    } else {
+      await interaction.reply(payload);
+    }
+  } catch (notifyError) {
+    logger.error('Failed to notify user of the above error:', notifyError);
+  }
+}
+
 export default {
   DIRECTION_LABEL,
+  GIFT_STATUS_LABEL,
+  handleError,
   buildTargetSelectRow,
   buildComposeModal,
   buildReplyModal,
