@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import consumet from "../../../utils/w2g/anime.js";
 import w2g from "../../../utils/w2g/w2g.js";
 import config from "../../../utils/w2g/config.js";
@@ -25,7 +25,7 @@ export default {
         .setDescription("The room ID to use. If none is provided, a new one will be created.")
     ),
   async execute(interaction) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const animeName = interaction.options.getString("anime-name");
     const episodeNumber = interaction.options.getInteger("episode") ?? 1;
 
@@ -33,7 +33,7 @@ export default {
     if (animeList?.length < 1) {
       interaction.followUp({
         content: `[ERROR] Unable to find anime with the name \`${animeName}\`.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -41,7 +41,7 @@ export default {
     if (!animeInfo) {
       interaction.followUp({
         content: `[ERROR] Unable to find any episodes for \`${animeName}\`.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -49,7 +49,7 @@ export default {
     if (!episodeId) {
       interaction.followUp({
         content: `[ERROR] Unable to find episode ${episodeNumber} of \`${animeName}\`.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -58,7 +58,7 @@ export default {
     if (servers?.length < 1 || !videoUrl) {
       interaction.followUp({
         content: `[ERROR] Unable to find video link for episode ${episodeNumber} of \`${animeName}\`.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -80,7 +80,7 @@ export default {
       } else {
         interaction.followUp({
           content: "Network error or invalid video url provided.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     } else {
@@ -95,7 +95,7 @@ export default {
       } else {
         interaction.followUp({
           content: "Unable to add video. This could be due to a bad room ID or invalid video link.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     }

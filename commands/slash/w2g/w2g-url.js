@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import w2g from "../../../utils/w2g/w2g.js";
 import config from "../../../utils/w2g/config.js";
 import logger from "../../../utils/logger.js";
@@ -19,7 +19,7 @@ export default {
         .setDescription("The room ID to use. If none is provided, a new one will be created.")
     ),
   async execute(interaction) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const videoUrl = interaction.options.getString("video-link");
     const roomId = interaction.options.getString("room-id");
     if (!roomId) {
@@ -33,7 +33,7 @@ export default {
       } else {
         interaction.followUp({
           content: "Network error or invalid video url provided.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     } else {
@@ -47,7 +47,7 @@ export default {
       } else {
         interaction.followUp({
           content: "Unable to add video. This could be due to a bad room ID or invalid video link.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     }

@@ -1,3 +1,4 @@
+import { join } from "@std/path";
 import scheduler from "node-schedule";
 import moment from "moment";
 import AsyncLock from "async-lock";
@@ -11,7 +12,7 @@ const lock = new AsyncLock();
 const reminders = new Keyv({
   namespace: "reminders",
   store: new KeyvFile({
-    filename: "./data/reminders.json",
+    filename: join(import.meta.dirname, "../../data/reminders.json"),
   }),
 });
 

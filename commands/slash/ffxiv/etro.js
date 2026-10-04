@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import etro from "../../../utils/ffxiv/etro.js";
 import logger from "../../../utils/logger.js";
 
@@ -24,7 +24,7 @@ export default {
     } else {
       interaction.followUp({
         content: "Network error or invalid etro url provided.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   },

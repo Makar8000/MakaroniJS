@@ -1,4 +1,5 @@
 import { Collection, REST, Routes } from "discord.js";
+import { join } from "@std/path";
 import { parseArgs } from "@std/cli/parse-args";
 import config from "../config.js";
 import logger from "./logger.js";
@@ -7,7 +8,7 @@ const args = parseArgs(Deno.args, { boolean: ["remove", "local"] });
 
 const collection = new Collection();
 if (!args.remove) {
-  await parseCommands("./commands/slash", collection);
+  await parseCommands(join(import.meta.dirname, "../commands/slash"), collection);
 }
 
 const rest = new REST().setToken(Deno.env.get("DISCORD_TOKEN"));
@@ -34,4 +35,4 @@ const deploy = async (deployAll) => {
   }
 };
 
-deploy(!args.local);
+await deploy(!args.local);

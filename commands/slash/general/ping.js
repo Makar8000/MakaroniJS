@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import logger from "../../../utils/logger.js";
 
 export default {
@@ -10,7 +10,7 @@ export default {
     const sent = await interaction.reply({
       content: `Websocket heartbeat: ${client.ws.ping}ms.`,
       fetchReply: true,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     interaction.editReply(`${sent.content}\nRoundtrip latency: ${sent.createdTimestamp - interaction.createdTimestamp}ms.`);
   },

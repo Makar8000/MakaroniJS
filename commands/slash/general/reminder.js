@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import moment from "moment";
 import config from "../../../utils/reminders/config.js";
 import ReminderManager from "../../../utils/reminders/reminder-manager.js";
@@ -47,7 +47,7 @@ export default {
         )
     ),
   async execute(interaction) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const client = interaction.client;
     const subcommand = interaction.options.getSubcommand();
     logger.debug(`Resolving subcommand: ${subcommand}`);
@@ -57,7 +57,7 @@ export default {
       if (time < moment().unix() || `${time}`.length !== 10) {
         await interaction.followUp({
           content: config.invalidTime(time),
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -76,12 +76,12 @@ export default {
       if (!resp) {
         await interaction.followUp({
           content: config.errorSchedule(time),
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       } else {
         await interaction.followUp({
           embeds: [config.createSuccess(reminder, interaction.user)],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     } else if (subcommand === "list") {
@@ -89,12 +89,12 @@ export default {
       if (!list?.length) {
         await interaction.followUp({
           content: config.listFail(),
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       } else {
         await interaction.followUp({
           embeds: [config.listSuccess(list, interaction.user)],
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     } else if (subcommand === "cancel") {
@@ -103,12 +103,12 @@ export default {
       if (!resp) {
         await interaction.followUp({
           content: config.cancelFail(id),
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       } else {
         await interaction.followUp({
           content: config.cancelSuccess(id),
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     }

@@ -1,4 +1,6 @@
-import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import scheduler from "node-schedule";
+import SantaManager from "../../../utils/santa/santa-manager.js";
 import config from "../../../config.js";
 import logger from "../../../utils/logger.js";
 
@@ -11,14 +13,19 @@ export default {
     if (config.users.admins.includes(interaction.user.id)) {
       await interaction.reply({
         content: "Shutting down...",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
-      interaction.client.destroy();
+      // Close any scheduled jobs
+      await scheduler.gracefulShutdown();
+      // Close Secret Santa DB
+      SantaManager.close();
+      // Discord shutdown
+      await interaction.client.destroy();
       Deno.exit(0);
     } else {
       interaction.reply({
         content: "You do not have permission to run this command.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   },

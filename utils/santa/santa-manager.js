@@ -1,3 +1,4 @@
+import { join } from "@std/path";
 import { parse as parseJsonc } from "@std/jsonc";
 import Database from "better-sqlite3";
 import { EmbedBuilder } from "discord.js";
@@ -5,7 +6,7 @@ import LLMManager from "../llm/llm-manager.js";
 import config from "../../config.js";
 import logger from "../logger.js";
 
-const db = new Database("./data/secretsanta.db");
+const db = new Database(join(import.meta.dirname, "../../data/secretsanta.db"));
 db.pragma("foreign_keys = ON");
 
 /**
@@ -553,7 +554,7 @@ async function warmUserCache(client) {
  * Loads the default santa config. Only called when the DB hasn't been seeded yet.
  */
 function seedDefaults() {
-  const santaConf = parseJsonc(Deno.readTextFileSync("./utils/santa/santas-default.jsonc"));
+  const santaConf = parseJsonc(Deno.readTextFileSync(join(import.meta.dirname, "santas-default.jsonc")));
   if (!santaConf.santaAvatar) {
     throw new Error("No Santa avatar defined");
   }
@@ -587,7 +588,7 @@ function seedDefaults() {
  * @param {Client} client The Discord client.
  */
 function init(client) {
-  db.exec(Deno.readTextFileSync("./utils/santa/ss-schema.sql"));
+  db.exec(Deno.readTextFileSync(join(import.meta.dirname, "ss-schema.sql")));
   if (!db.prepare("SELECT 1 FROM config WHERE key = 'game_started'").get()) {
     seedDefaults();
   }
@@ -637,6 +638,13 @@ function shuffle(array) {
   }
 }
 
+/**
+ * Closes the database. Called on shutdown so SQLite flushes cleanly.
+ */
+function close() {
+  db.close();
+}
+
 export default {
   DIRECTIONS_WITH_RP_MODE,
   isRegistered,
@@ -665,4 +673,5 @@ export default {
   init,
   getConfig,
   updateConfig,
+  close,
 };

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import HSRManager from "../../../utils/hsr/hsr-manager.js";
 import logger from "../../../utils/logger.js";
 import { messages } from "../../../utils/hsr/config.js";
@@ -38,7 +38,7 @@ export default {
         )
     ),
   async execute(interaction) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const client = interaction.client;
     const subcommand = interaction.options.getSubcommand();
     logger.debug(`Resolving subcommand: ${subcommand}`);
@@ -50,12 +50,12 @@ export default {
         if (resp) {
           await interaction.followUp({
             content: messages.subscribeSuccess,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         } else {
           await interaction.followUp({
             content: messages.subscribeError,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         }
       } else {
@@ -63,12 +63,12 @@ export default {
         if (resp) {
           await interaction.followUp({
             content: messages.unsubscribeSuccess,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         } else {
           await interaction.followUp({
             content: messages.unsubscribeError,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         }
       }
@@ -79,12 +79,12 @@ export default {
         if (resp) {
           await interaction.followUp({
             content: messages.subscribeSuccess,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         } else {
           await interaction.followUp({
             content: messages.subscribeError,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         }
       } else {
@@ -92,12 +92,12 @@ export default {
         if (resp) {
           await interaction.followUp({
             content: messages.unsubscribeSuccess,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         } else {
           await interaction.followUp({
             content: messages.unsubscribeError,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         }
       }

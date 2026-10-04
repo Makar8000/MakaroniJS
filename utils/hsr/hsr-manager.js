@@ -1,3 +1,4 @@
+import { join } from "@std/path";
 import scheduler from "node-schedule";
 import Keyv from "keyv";
 import { KeyvFile } from "keyv-file";
@@ -5,13 +6,13 @@ import { AttachmentBuilder, Collection } from "discord.js";
 import logger from "../logger.js";
 import { repoConfig } from "./config.js";
 import { downloadJsonFile, getLatestCommit, getLatestCommitHash } from "./github-utils.js";
-const incDataDefaultPath = "./utils/hsr/inclination-types.json";
+const incDataDefaultPath = join(import.meta.dirname, "inclination-types.json");
 const jobs = new Collection();
 
 const hsr = new Keyv({
   namespace: "hsr",
   store: new KeyvFile({
-    filename: "./data/hsr.json",
+    filename: join(import.meta.dirname, "../../data/hsr.json"),
   }),
 });
 let curInclHash;

@@ -24,7 +24,7 @@ export const getDiscordStr = (str, maxLen) => {
 
   // Max Length
   if (maxLen) {
-    newStr = newStr.substring(str, maxLen);
+    newStr = newStr.substring(0, maxLen);
   }
 
   return newStr.trim();

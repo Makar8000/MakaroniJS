@@ -1,4 +1,4 @@
-import { ActivityType, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { ActivityType, MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import config from "../../../config.js";
 import logger from "../../../utils/logger.js";
 
@@ -58,7 +58,7 @@ export default {
     if (!config.users.admins.includes(interaction.user.id)) {
       interaction.reply({
         content: "You do not have permission to run this command.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     } else if (subcommand === "activity") {
       const name = interaction.options.getString("name");
@@ -68,7 +68,7 @@ export default {
       const reply = `Set ${subcommand} to "${name}" with type #${type}`;
       await interaction.reply({
         content: reply,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       logger.info(reply);
     } else if (subcommand === "status") {
@@ -78,7 +78,7 @@ export default {
       const reply = `Set ${subcommand} to ${type}`;
       await interaction.reply({
         content: reply,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       logger.info(reply);
     }
