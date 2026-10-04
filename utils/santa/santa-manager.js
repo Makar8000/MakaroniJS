@@ -299,15 +299,53 @@ async function start(client) {
   });
   transaction(santas);
 
-  const results = await Promise.allSettled(santas.map(async (santa) => {
-    const [santaUser, receiverUser] = await Promise.all([
-      client.users.fetch(santa.discordId),
-      client.users.fetch(santa.receiver.discordId),
-    ]);
-    await santaUser.send({ embeds: [getEmbedForSanta(receiverUser, santa.receiver)] });
+  return resendPairs(client);
+}
+
+/**
+ * DMs each of the given santas a payload.
+ * @param {Client} client The Discord client.
+ * @param {String[]} santaIds The Discord IDs of the santas to DM.
+ * @param {Function} getPayload Given a santa's Discord ID, returns (or resolves to) the message payload to send.
+ * @returns {Promise<{failed: String[]}>} The Discord IDs of santas who could not be DMed.
+ */
+async function dmSantas(client, santaIds, getPayload) {
+  const results = await Promise.allSettled(santaIds.map(async (santaId) => {
+    const santaUser = await client.users.fetch(santaId);
+    await santaUser.send(await getPayload(santaId));
   }));
-  const failed = santas.filter((_, i) => results[i].status === 'rejected').map(s => s.discordId);
-  return { failed };
+  return { failed: santaIds.filter((_, i) => results[i].status === 'rejected') };
+}
+
+/**
+ * Re-sends every santa the embed telling them who their receiver is.
+ * @param {Client} client The Discord client.
+ * @returns
+ *  False if the session hasn't started (there are no pairs).
+ *  Otherwise an object { failed } listing the Discord IDs of santas who could not be DMed.
+ */
+async function resendPairs(client) {
+  if (!started()) {
+    return false;
+  }
+  const pairs = getSelectedPairs();
+  return dmSantas(client, Object.keys(pairs), async (santaId) => {
+    const receiverId = pairs[santaId];
+    const receiverUser = await client.users.fetch(receiverId);
+    return { embeds: [getEmbedForSanta(receiverUser, getParticipant(receiverId))] };
+  });
+}
+
+/**
+ * DMs a message from Santa to every registered santa.
+ * @param {Client} client The Discord client.
+ * @param {String} message The message to send.
+ * @returns {Promise<{sent: Number, failed: String[]}>} How many santas were messaged, and who could not be DMed.
+ */
+async function messageAll(client, message) {
+  const ids = getAll().map(santa => santa.discordId);
+  const { failed } = await dmSantas(client, ids, () => ({ embeds: [getEmbedForMessage(message)] }));
+  return { sent: ids.length - failed.length, failed };
 }
 
 /**
@@ -618,6 +656,8 @@ export default {
   transformMessage,
   logMessage,
   start,
+  resendPairs,
+  messageAll,
   getEmbedForMessage,
   reset,
   getAll,

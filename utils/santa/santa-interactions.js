@@ -440,10 +440,20 @@ async function handleError(interaction, error) {
   }
 }
 
+/**
+ * Builds the warning appended to admin replies when some DMs couldn't be delivered.
+ * @param {String[]} failed The Discord IDs of users who could not be DMed.
+ * @returns {String} The warning line, or an empty string if nothing failed.
+ */
+function dmFailedWarning(failed) {
+  return failed.length ? `\n[WARNING] Could not DM: ${failed.map(id => `<@${id}>`).join(' ')}` : '';
+}
+
 export default {
   DIRECTION_LABEL,
   GIFT_STATUS_LABEL,
   handleError,
+  dmFailedWarning,
   buildTargetSelectRow,
   buildComposeModal,
   buildReplyModal,

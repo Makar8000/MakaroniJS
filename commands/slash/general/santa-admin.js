@@ -42,6 +42,19 @@ export default {
         .setRequired(false)),
     )
     .addSubcommand(subcommand => subcommand
+      .setName('msg-all')
+      .setDescription('Sends a message from Santa to every registered santa.')
+      .addStringOption(option => option
+        .setName('message')
+        .setDescription('The message to send.')
+        .setMaxLength(2000)
+        .setRequired(true)),
+    )
+    .addSubcommand(subcommand => subcommand
+      .setName('resend-pairs')
+      .setDescription('Re-sends every santa the receiver they were selected for.'),
+    )
+    .addSubcommand(subcommand => subcommand
       .setName('config')
       .setDescription('Updates the value of an existing Secret Santa config key.')
       .addStringOption(option => option
@@ -71,11 +84,8 @@ export default {
       if (subcommand === 'start' && !SantaManager.started()) {
         const resp = await SantaManager.start(client);
         if (resp) {
-          const failedMsg = resp.failed.length
-            ? `\n[WARNING] Could not DM: ${resp.failed.map(id => `<@${id}>`).join(' ')}`
-            : '';
           await interaction.followUp({
-            content: `Secret Santa has been started.${failedMsg}`,
+            content: `Secret Santa has been started.${SantaMessaging.dmFailedWarning(resp.failed)}`,
             flags: MessageFlags.Ephemeral,
             allowedMentions: { parse: [] },
           });
@@ -97,6 +107,24 @@ export default {
           flags: MessageFlags.Ephemeral,
         });
       }
+    } else if (subcommand === 'msg-all') {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      const { sent, failed } = await SantaManager.messageAll(client, interaction.options.getString('message'));
+      await interaction.followUp({
+        content: `Message sent to ${sent} santa(s).${SantaMessaging.dmFailedWarning(failed)}`,
+        flags: MessageFlags.Ephemeral,
+        allowedMentions: { parse: [] },
+      });
+    } else if (subcommand === 'resend-pairs') {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      const resp = await SantaManager.resendPairs(client);
+      await interaction.followUp({
+        content: resp
+          ? `Pairs re-sent.${SantaMessaging.dmFailedWarning(resp.failed)}`
+          : '[ERROR] The Secret Santa session has not started yet. There are no pairs.',
+        flags: MessageFlags.Ephemeral,
+        allowedMentions: { parse: [] },
+      });
     } else if (subcommand === 'list') {
       const santaList = SantaManager.getAll();
       const msg = santaList.reduce((list, santa) => `${list}  <@${santa.discordId}>`, '').trim();
