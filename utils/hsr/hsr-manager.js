@@ -54,38 +54,42 @@ async function checkForInclinationTypes(client) {
     return;
   }
 
-  const newHash = await getLatestCommitHash();
-  if (newHash !== curInclHash) {
-    const patch = (await getLatestCommit()).commit.message;
-    const newData = await loadIncData();
-    const outputList = [];
-    let atLeastOne = false;
-    Object.keys(newData).map((type) => {
-      newData[type].textMapList.map((newD) => {
-        if (!curInclData[type].textMapList.find((oldD) => oldD.id === newD.id)) {
-          newData[type].newTextMapList.push(newD);
+  try {
+    const newHash = await getLatestCommitHash();
+    if (newHash !== curInclHash) {
+      const patch = (await getLatestCommit()).commit.message;
+      const newData = await loadIncData();
+      const outputList = [];
+      let atLeastOne = false;
+      Object.keys(newData).map((type) => {
+        newData[type].textMapList.map((newD) => {
+          if (!curInclData[type].textMapList.find((oldD) => oldD.id === newD.id)) {
+            newData[type].newTextMapList.push(newD);
+          }
+        });
+
+        if (newData[type].newTextMapList.length) {
+          outputList.push(`### ${newData[type].name}${newData[type].newTextMapList.map(({ text }) => `\n- ${text}`).join("")}`);
+          atLeastOne = true;
+        } else {
+          outputList.push(`### ${newData[type].name}\n_no new dialogue options_`);
         }
       });
 
-      if (newData[type].newTextMapList.length) {
-        outputList.push(`### ${newData[type].name}${newData[type].newTextMapList.map(({ text }) => `\n- ${text}`).join("")}`);
-        atLeastOne = true;
+      if (atLeastOne) {
+        const output = `## ${patch}\nSee below for a list of new dialogue options available for each achievement.\n${outputList.join("\n")}`;
+        await sendMessageToUsers(client, output);
       } else {
-        outputList.push(`### ${newData[type].name}\n_no new dialogue options_`);
+        const output = `## ${patch}\n_no new dialogue options this patch_`;
+        await sendMessageToUsers(client, output);
       }
-    });
 
-    if (atLeastOne) {
-      const output = `## ${patch}\nSee below for a list of new dialogue options available for each achievement.\n${outputList.join("\n")}`;
-      sendMessageToUsers(client, output);
-    } else {
-      const output = `## ${patch}\n_no new dialogue options this patch_`;
-      sendMessageToUsers(client, output);
+      curInclHash = newHash;
+      curInclData = newData;
+      curInclData.newTextMapList = [];
     }
-
-    curInclHash = newHash;
-    curInclData = newData;
-    curInclData.newTextMapList = [];
+  } catch (error) {
+    logger.error("HSR inclination check failed:", error);
   }
 }
 
