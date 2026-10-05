@@ -1,0 +1,37 @@
+const bots = {
+  MAKARONI: "177245115679637504",
+  MEDLIONI: "216338485257175042",
+};
+
+const guilds = {
+  CANADALAND: "91676956352868352",
+};
+
+const channels = {
+  SECRET_SANTA: "1553609566032498688",
+};
+
+const users = {
+  MARK: "85924030661533696",
+  CHRIS: "134209083749171200",
+};
+
+const admins = [
+  users.MARK,
+  bots.MAKARONI,
+  bots.MEDLIONI,
+];
+
+export default {
+  guilds,
+  channels,
+  bots,
+  users: {
+    ...users,
+    admins,
+    monitorAllowed: [
+      ...admins,
+      users.CHRIS,
+    ],
+  },
+};
