@@ -43,7 +43,15 @@ CREATE TABLE IF NOT EXISTS message_history (
     message_id INTEGER PRIMARY KEY AUTOINCREMENT,
     sender_id TEXT NOT NULL,
     target_id TEXT NOT NULL,
-    direction TEXT,
+    direction TEXT NOT NULL CHECK (
+      direction IN (
+        'RECEIVER_TO_SANTA',
+        'SANTA_TO_RECEIVER',
+        'SANTA_TO_PUBLIC',
+        'SANTA_TO_USER',
+        'USER_TO_SANTA'
+      )
+    ),
     original_content TEXT NOT NULL,
     processed_content TEXT,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,

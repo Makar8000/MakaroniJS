@@ -490,7 +490,25 @@ interface HistoryRow {
  * @returns {String} The possibly-truncated text.
  */
 function truncate(text: string, max: number) {
-  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+  let result = text;
+  if (text.length > max) {
+    let end = max - 1;
+    // Avoid cutting an emoji (surrogate pair) in half
+    const last = text.charCodeAt(end - 1);
+    if (last >= 0xD800 && last <= 0xDBFF) {
+      end--;
+    }
+    result = `${text.slice(0, end)}…`;
+  }
+
+  // Handle partial code blocks
+  const fenceCount = result.split("```").length - 1;
+  const hasOpenCodeBlock = fenceCount % 2 === 1;
+  if (hasOpenCodeBlock) {
+    result += "\n```";
+  }
+
+  return result;
 }
 
 /**
@@ -577,6 +595,7 @@ function buildHistoryButtonRow(value: string, page: number, pageCount: number) {
  * @returns The payload fields to send, or null if the selection can't be resolved to another user.
  */
 async function buildHistoryView(client: Client, userId: string, value: string, page?: number) {
+  // Anything that isn't SANTA/RECEIVER is a user ID picked from the dropdown.
   let otherId: string | undefined;
   if (value === "SANTA") {
     otherId = SantaManager.getSanta(userId);
@@ -600,7 +619,7 @@ async function buildHistoryView(client: Client, userId: string, value: string, p
     : `✉️ Conversation with ${otherName}`;
   const color = isSanta ? 0xE74C3C : value === "RECEIVER" ? 0x2ECC71 : 0xB377FF;
 
-  // Only this thread: the same person can be both a Santa/Receiver and a User conversation.
+  // Keep threads separate: the same person can be your Santa/Receiver and a User you messaged.
   const thread = value === "SANTA" || value === "RECEIVER" ? SantaManager.THREADS[value] : SantaManager.THREADS.USER;
   const history = SantaManager.getConversationHistory(userId, otherId, thread) as HistoryRow[];
   const selectRow = await buildHistorySelectRow(client, userId, value);
@@ -619,17 +638,21 @@ async function buildHistoryView(client: Client, userId: string, value: string, p
     return { content: "", embeds: [embed], components: [selectRow] };
   }
 
-  // Group the (chronological) entries into pages that fit within the embed description limit.
+  // Pack entries into pages that fit in the embed description
   const pages: string[] = [];
   let current = "";
   for (const row of history) {
     const sentByMe = row.sender_id === userId;
     const text = row.processed_content ?? row.original_content;
+    // SQLite timestamps are UTC with no zone, so tag them as such before parsing
     const unixTime = Math.floor(new Date(`${row.timestamp.replace(" ", "T")}Z`).getTime() / 1000);
     let entry = `**${sentByMe ? "You" : otherName}** • <t:${unixTime}:f>\n${truncate(text, 1500)}`;
     if (sentByMe && row.processed_content && row.processed_content !== row.original_content) {
-      entry += `\n-# Original: ${truncate(row.original_content, 500).replaceAll("\n", " ")}`;
+      // Blockquote needs `> ` on every line, and matches body font size
+      const original = truncate(row.original_content, 500).split("\n").map((line) => `> ${line}`).join("\n");
+      entry += `\n> *Original:*\n${original}`;
     }
+    // +2 is the "\n\n" separator.
     if (current && current.length + entry.length + 2 > HISTORY_PAGE_CHARS) {
       pages.push(current);
       current = entry;
@@ -639,7 +662,9 @@ async function buildHistoryView(client: Client, userId: string, value: string, p
   }
   pages.push(current);
 
-  const pageIndex = Math.min(Math.max(page ?? pages.length - 1, 0), pages.length - 1);
+  // Default to the last page; clamp in case history changed since the button was made.
+  const requested = page !== undefined && Number.isFinite(page) ? page : pages.length - 1;
+  const pageIndex = Math.min(Math.max(requested, 0), pages.length - 1);
   embed
     .setDescription(pages[pageIndex])
     .setFooter({ text: `Page ${pageIndex + 1} of ${pages.length} • ${history.length} message${history.length === 1 ? "" : "s"}` });
