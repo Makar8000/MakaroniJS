@@ -118,8 +118,7 @@ function buildReplyRow(direction: string, senderId: string) {
   if (!replyDirection) {
     return null;
   }
-  const replyRpMode = DIRECTIONS_WITH_RP_MODE.has(replyDirection) ? SantaManager.getDefaultRpMode() : "DISABLED";
-  const customId = `${COMMAND_NAME}:reply:${replyDirection}:${senderId}:${replyRpMode}`;
+  const customId = `${COMMAND_NAME}:reply:${replyDirection}:${senderId}`;
   const button = new ButtonBuilder()
     .setCustomId(customId)
     .setLabel("Reply")
@@ -220,7 +219,7 @@ function buildRpModeLabel(defaultRpMode: string) {
 
 /**
  * Builds the Label used to pick a target user, listing only registered participants other than
- * the sender.
+ * the sender and the sender's receiver.
  * @param {Client} client The Discord client.
  * @param {String} senderId The Discord ID of the user composing the message, excluded from the list.
  * @returns {Promise<LabelBuilder>} The built LabelBuilder.
@@ -228,7 +227,8 @@ function buildRpModeLabel(defaultRpMode: string) {
 async function buildUserLabel(client: Client, senderId: string) {
   const santas = SantaManager.getAll();
   // String Select supports a max of 25 options.
-  const eligible = santas.filter((santa) => santa.discordId !== senderId).slice(0, 25);
+  const receiverId = SantaManager.getReceiver(senderId);
+  const eligible = santas.filter((santa) => santa.discordId !== senderId && santa.discordId !== receiverId).slice(0, 25);
   if (!eligible.length) {
     return null;
   }
@@ -239,7 +239,7 @@ async function buildUserLabel(client: Client, senderId: string) {
   }));
 
   return new LabelBuilder()
-    .setLabel("Which user? (registered participants only)")
+    .setLabel("Which user?")
     .setStringSelectMenuComponent((select) =>
       select
         .setCustomId("user")
@@ -315,14 +315,16 @@ function buildRegisterModal(existing?: { name: string; address: string; notes?: 
  * @param {String} direction The message-routing direction enum value this modal will send.
  * @param {String} targetId The Discord ID this reply will be sent to, used only when direction
  *  is in DIRECTIONS_WITH_EXPLICIT_TARGET.
- * @param {String} rpMode The rp style to apply to the message.
  * @returns The built ModalBuilder.
  */
-function buildReplyModal(direction: string, targetId: string, rpMode: string) {
-  return new ModalBuilder()
-    .setCustomId(`${COMMAND_NAME}:replymodal:${direction}:${targetId}:${rpMode}`)
-    .setTitle(REPLY_MODAL_TITLE[direction])
-    .addLabelComponents(buildMessageLabel());
+function buildReplyModal(direction: string, targetId: string) {
+  const modal = new ModalBuilder()
+    .setCustomId(`${COMMAND_NAME}:replymodal:${direction}:${targetId}`)
+    .setTitle(REPLY_MODAL_TITLE[direction]);
+  if (DIRECTIONS_WITH_RP_MODE.has(direction) && SantaManager.isRpModeSelectionAllowed()) {
+    modal.addLabelComponents(buildRpModeLabel(SantaManager.getDefaultRpMode()));
+  }
+  return modal.addLabelComponents(buildMessageLabel());
 }
 
 /**
@@ -360,21 +362,10 @@ function parseModalSubmission(interaction: ModalSubmitInteraction): {
   msg: string;
   error: string | null;
 } {
-  const [, action, modalDirection, replyTargetId, replyRpMode] = interaction.customId.split(":");
+  const [, action, direction, replyTargetId] = interaction.customId.split(":");
   const msg = interaction.fields.getTextInputValue("message");
 
-  if (action === "replymodal") {
-    return {
-      direction: modalDirection,
-      targetId: replyTargetId,
-      rpMode: replyRpMode,
-      msg,
-      error: null,
-    };
-  }
-
-  const direction = modalDirection;
-  // RECEIVER_TO_SANTA has no rp-mode field, so rp-mode is disabled rather than defaulted.
+  // Directions without an rp-mode (e.g. RECEIVER_TO_SANTA) are disabled rather than defaulted.
   let rpMode = "DISABLED";
   if (DIRECTIONS_WITH_RP_MODE.has(direction)) {
     const selectionAllowed = SantaManager.isRpModeSelectionAllowed();
@@ -386,6 +377,10 @@ function parseModalSubmission(interaction: ModalSubmitInteraction): {
       // Selection is disabled by config, or the user left it unselected.
       rpMode = SantaManager.getDefaultRpMode();
     }
+  }
+
+  if (action === "replymodal") {
+    return { direction, targetId: replyTargetId, rpMode, msg, error: null };
   }
 
   let targetId: string | undefined;
@@ -450,7 +445,11 @@ async function sendSantaMessage(
   SantaManager.logMessage(interaction.user.id, destination.id, msg, modifiedText);
 
   // Message is already sent; a failed DM copy to the sender (e.g. DMs disabled) is not an error.
-  const contentOutput = `Sent the following message to ${DIRECTION_LABEL[direction]}:\n${modifiedText}\n\nOriginal:\n${msg}`;
+  let contentOutput = `Sent the following message to ${DIRECTION_LABEL[direction]}:\n${modifiedText}`;
+  const wasTransformed = modifiedText !== msg;
+  if (wasTransformed) {
+    contentOutput += `\n\nOriginal:\n${msg}`;
+  }
   await interaction.followUp({
     content: "Success",
     flags: MessageFlags.Ephemeral,

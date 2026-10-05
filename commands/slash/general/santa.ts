@@ -144,7 +144,7 @@ export default {
    * @param {ButtonInteraction} interaction The button interaction to handle.
    */
   async button(interaction) {
-    const [, action, direction, targetId, rpMode] = interaction.customId.split(":");
+    const [, action, direction, targetId] = interaction.customId.split(":");
     if (action !== "reply") {
       return;
     }
@@ -166,7 +166,7 @@ export default {
     }
 
     logger.debug(`Showing reply modal for direction: ${direction}`);
-    await interaction.showModal(SantaMessaging.buildReplyModal(direction, targetId, rpMode));
+    await interaction.showModal(SantaMessaging.buildReplyModal(direction, targetId));
   },
   /**
    * Handles modal submissions namespaced under this command.
