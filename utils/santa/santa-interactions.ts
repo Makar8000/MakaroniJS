@@ -19,53 +19,54 @@ import {
 } from "discord.js";
 import SantaManager from "./santa-manager.ts";
 import logger from "../logger.ts";
+import { DIRECTIONS, DISCORD_LIMITS, RP_MODES, SANTA_COLORS, SANTA_LIMITS, TARGETS } from "./constants.ts";
 
 // Namespace prefix for customIds built/parsed by this module, matching the `/ss` command name.
 const COMMAND_NAME = "ss";
 
 // Maps the `target` choice on `/ss msg` to the message-routing direction enum.
 const TARGET_TO_DIRECTION: Record<string, string> = {
-  SANTA: "RECEIVER_TO_SANTA",
-  RECEIVER: "SANTA_TO_RECEIVER",
-  CHANNEL: "SANTA_TO_PUBLIC",
-  USER: "SANTA_TO_USER",
+  [TARGETS.SANTA]: DIRECTIONS.RECEIVER_TO_SANTA,
+  [TARGETS.RECEIVER]: DIRECTIONS.SANTA_TO_RECEIVER,
+  [TARGETS.CHANNEL]: DIRECTIONS.SANTA_TO_PUBLIC,
+  [TARGETS.USER]: DIRECTIONS.SANTA_TO_USER,
 };
 
 // Maps a direction to the direction a reply to it should use.
 const REPLY_DIRECTION: Record<string, string> = {
-  RECEIVER_TO_SANTA: "SANTA_TO_RECEIVER",
-  SANTA_TO_RECEIVER: "RECEIVER_TO_SANTA",
-  SANTA_TO_USER: "USER_TO_SANTA",
-  USER_TO_SANTA: "SANTA_TO_USER",
+  [DIRECTIONS.RECEIVER_TO_SANTA]: DIRECTIONS.SANTA_TO_RECEIVER,
+  [DIRECTIONS.SANTA_TO_RECEIVER]: DIRECTIONS.RECEIVER_TO_SANTA,
+  [DIRECTIONS.SANTA_TO_USER]: DIRECTIONS.USER_TO_SANTA,
+  [DIRECTIONS.USER_TO_SANTA]: DIRECTIONS.SANTA_TO_USER,
 };
 
 // Directions where the sender is roleplaying as Santa, so the rp-mode transform applies.
 const { DIRECTIONS_WITH_RP_MODE } = SantaManager;
 
 // Directions with no pairing to look up, so the target Discord ID must be carried in the customId instead.
-const DIRECTIONS_WITH_EXPLICIT_TARGET = new Set(["SANTA_TO_USER", "USER_TO_SANTA"]);
+const DIRECTIONS_WITH_EXPLICIT_TARGET = new Set<string>([DIRECTIONS.SANTA_TO_USER, DIRECTIONS.USER_TO_SANTA]);
 
 // Friendly labels for the confirmation DM/error text sent back to the sender.
 const DIRECTION_LABEL: Record<string, string> = {
-  RECEIVER_TO_SANTA: "santa",
-  SANTA_TO_RECEIVER: "receiver",
-  SANTA_TO_PUBLIC: "channel",
-  SANTA_TO_USER: "user",
-  USER_TO_SANTA: "user",
+  [DIRECTIONS.RECEIVER_TO_SANTA]: "santa",
+  [DIRECTIONS.SANTA_TO_RECEIVER]: "receiver",
+  [DIRECTIONS.SANTA_TO_PUBLIC]: "channel",
+  [DIRECTIONS.SANTA_TO_USER]: "user",
+  [DIRECTIONS.USER_TO_SANTA]: "user",
 };
 
 const COMPOSE_MODAL_TITLE: Record<string, string> = {
-  RECEIVER_TO_SANTA: "Message Your Santa",
-  SANTA_TO_RECEIVER: "Message Your Receiver",
-  SANTA_TO_PUBLIC: "Message the Secret Santa Channel",
-  SANTA_TO_USER: "Message a User Anonymously",
+  [DIRECTIONS.RECEIVER_TO_SANTA]: "Message Your Santa",
+  [DIRECTIONS.SANTA_TO_RECEIVER]: "Message Your Receiver",
+  [DIRECTIONS.SANTA_TO_PUBLIC]: "Message the Secret Santa Channel",
+  [DIRECTIONS.SANTA_TO_USER]: "Message a User Anonymously",
 };
 
 const REPLY_MODAL_TITLE: Record<string, string> = {
-  RECEIVER_TO_SANTA: "Reply to Your Santa",
-  SANTA_TO_RECEIVER: "Reply to Your Receiver",
-  SANTA_TO_USER: "Reply Anonymously",
-  USER_TO_SANTA: "Reply to this Santa",
+  [DIRECTIONS.RECEIVER_TO_SANTA]: "Reply to Your Santa",
+  [DIRECTIONS.SANTA_TO_RECEIVER]: "Reply to Your Receiver",
+  [DIRECTIONS.SANTA_TO_USER]: "Reply Anonymously",
+  [DIRECTIONS.USER_TO_SANTA]: "Reply to this Santa",
 };
 
 // Gift tracking milestone values -> friendly labels, used for the `/ss gift` choices and `/ss-admin giftlist`.
@@ -76,9 +77,9 @@ const GIFT_STATUS_LABEL: Record<string, string> = {
 };
 
 const RP_MODE_CHOICES = [
-  { name: "Default", value: "URIANGER" },
-  { name: "Simple", value: "SIMPLE" },
-  { name: "Disabled", value: "DISABLED" },
+  { name: "Default", value: RP_MODES.URIANGER },
+  { name: "Simple", value: RP_MODES.SIMPLE },
+  { name: "Disabled", value: RP_MODES.DISABLED },
 ];
 
 /**
@@ -93,11 +94,11 @@ async function resolveDestination(client: Client, direction: string, senderId: s
   let destination: User | SendableChannels | null | undefined;
   if (DIRECTIONS_WITH_EXPLICIT_TARGET.has(direction)) {
     destination = await client.users.fetch(explicitTargetId!);
-  } else if (direction === "RECEIVER_TO_SANTA") {
+  } else if (direction === DIRECTIONS.RECEIVER_TO_SANTA) {
     destination = await client.users.fetch(SantaManager.getSanta(senderId)!);
-  } else if (direction === "SANTA_TO_RECEIVER") {
+  } else if (direction === DIRECTIONS.SANTA_TO_RECEIVER) {
     destination = await client.users.fetch(SantaManager.getReceiver(senderId)!);
-  } else if (direction === "SANTA_TO_PUBLIC") {
+  } else if (direction === DIRECTIONS.SANTA_TO_PUBLIC) {
     const channel = await client.channels.fetch(SantaManager.getChannelId());
     destination = channel?.isSendable() ? channel : null;
   }
@@ -169,7 +170,7 @@ function buildTextLabel(
  * @returns The built LabelBuilder.
  */
 function buildMessageLabel() {
-  return buildTextLabel("Your message", "message", { style: TextInputStyle.Paragraph, maxLength: 2000 });
+  return buildTextLabel("Your message", "message", { style: TextInputStyle.Paragraph, maxLength: DISCORD_LIMITS.MESSAGE_LENGTH });
 }
 
 /**
@@ -184,13 +185,13 @@ async function buildTargetSelectRow(client: Client, senderId: string) {
     .setCustomId(`${COMMAND_NAME}:msgtarget`)
     .setPlaceholder("Who do you want to message?")
     .addOptions(
-      { label: "Santa", description: "Message your Secret Santa.", value: "SANTA", emoji: { name: "🎅" } },
-      { label: "Receiver", description: "Message your receiver anonymously.", value: "RECEIVER", emoji: { name: "🎁" } },
-      { label: "Channel", description: "Post to the Secret Santa channel anonymously.", value: "CHANNEL", emoji: { name: "📢" } },
+      { label: "Santa", description: "Message your Secret Santa.", value: TARGETS.SANTA, emoji: { name: "🎅" } },
+      { label: "Receiver", description: "Message your receiver anonymously.", value: TARGETS.RECEIVER, emoji: { name: "🎁" } },
+      { label: "Channel", description: "Post to the Secret Santa channel anonymously.", value: TARGETS.CHANNEL, emoji: { name: "📢" } },
       {
         label: "User",
         description: `Message any other Santa. You will appear as "${receiver.displayName}'s Santa"`,
-        value: "USER",
+        value: TARGETS.USER,
         emoji: { name: "✉️" },
       },
     );
@@ -227,9 +228,10 @@ function buildRpModeLabel(defaultRpMode: string) {
  */
 async function buildUserLabel(client: Client, senderId: string) {
   const santas = SantaManager.getAll();
-  // String Select supports a max of 25 options.
   const receiverId = SantaManager.getReceiver(senderId);
-  const eligible = santas.filter((santa) => santa.discordId !== senderId && santa.discordId !== receiverId).slice(0, 25);
+  const eligible = santas
+    .filter((santa) => santa.discordId !== senderId && santa.discordId !== receiverId)
+    .slice(0, DISCORD_LIMITS.SELECT_OPTIONS);
   if (!eligible.length) {
     return null;
   }
@@ -263,7 +265,7 @@ async function buildComposeModal(client: Client, target: string, senderId: strin
     .setCustomId(`${COMMAND_NAME}:msgmodal:${direction}`)
     .setTitle(COMPOSE_MODAL_TITLE[direction]);
 
-  if (target === "SANTA") {
+  if (target === TARGETS.SANTA) {
     // Messaging your own Santa never applies an rp-mode.
     return modal.addLabelComponents(buildMessageLabel());
   }
@@ -272,7 +274,7 @@ async function buildComposeModal(client: Client, target: string, senderId: strin
   // configured default rp-mode is applied silently (see parseModalSubmission).
   const rpModeLabel = SantaManager.isRpModeSelectionAllowed() ? buildRpModeLabel(SantaManager.getDefaultRpMode()) : null;
 
-  if (target === "USER") {
+  if (target === TARGETS.USER) {
     const userLabel = await buildUserLabel(client, senderId);
     if (!userLabel) {
       return null;
@@ -296,16 +298,16 @@ function buildRegisterModal(existing?: { name: string; address: string; notes?: 
     .setCustomId(`${COMMAND_NAME}:registermodal`)
     .setTitle(existing ? "Update Secret Santa Registration" : "Register for Secret Santa")
     .addLabelComponents(
-      buildTextLabel("Name (shown on your package(s))", "name", { maxLength: 100, value: existing?.name }),
+      buildTextLabel("Name (shown on your package(s))", "name", { maxLength: SANTA_LIMITS.NAME_LENGTH, value: existing?.name }),
       buildTextLabel("Address (where your Santa should ship to)", "address", {
         style: TextInputStyle.Paragraph,
-        maxLength: 300,
+        maxLength: SANTA_LIMITS.ADDRESS_LENGTH,
         value: existing?.address,
       }),
       buildTextLabel("Notes for your Santa (what not to buy, etc.)", "notes", {
         style: TextInputStyle.Paragraph,
         required: false,
-        maxLength: 500,
+        maxLength: SANTA_LIMITS.NOTES_LENGTH,
         value: existing?.notes,
       }),
     );
@@ -367,7 +369,7 @@ function parseModalSubmission(interaction: ModalSubmitInteraction): {
   const msg = interaction.fields.getTextInputValue("message");
 
   // Directions without an rp-mode (e.g. RECEIVER_TO_SANTA) are disabled rather than defaulted.
-  let rpMode = "DISABLED";
+  let rpMode: string = RP_MODES.DISABLED;
   if (DIRECTIONS_WITH_RP_MODE.has(direction)) {
     const selectionAllowed = SantaManager.isRpModeSelectionAllowed();
     if (selectionAllowed) {
@@ -385,7 +387,7 @@ function parseModalSubmission(interaction: ModalSubmitInteraction): {
   }
 
   let targetId: string | undefined;
-  if (direction === "SANTA_TO_USER") {
+  if (direction === DIRECTIONS.SANTA_TO_USER) {
     const selectedUserId = interaction.fields.getStringSelectValues("user")[0];
     if (!selectedUserId || selectedUserId === interaction.user.id || !SantaManager.isRegistered(selectedUserId)) {
       return {
@@ -424,16 +426,20 @@ async function sendSantaMessage(
   const modifiedText = await SantaManager.transformMessage(interaction.user.id, destination.id, direction, msg, rpMode);
 
   let embedUser: User | string | undefined;
-  if (direction === "RECEIVER_TO_SANTA" || direction === "USER_TO_SANTA") {
+  let embedColor: number = SANTA_COLORS.USER;
+  if (direction === DIRECTIONS.RECEIVER_TO_SANTA || direction === DIRECTIONS.USER_TO_SANTA) {
     // The santa already knows who the sender is in both cases, so it's safe to show their name.
     embedUser = interaction.user;
-  } else if (direction === "SANTA_TO_USER") {
+  } else if (direction === DIRECTIONS.SANTA_TO_USER) {
     const receiver = await client.users.fetch(SantaManager.getReceiver(interaction.user.id)!);
     embedUser = receiver.displayName;
   }
+  if (direction === DIRECTIONS.RECEIVER_TO_SANTA) {
+    embedColor = SANTA_COLORS.RECEIVER;
+  }
 
-  const embed = SantaManager.getEmbedForMessage(modifiedText, embedUser);
-  if (direction === "SANTA_TO_PUBLIC") {
+  const embed = SantaManager.getEmbedForMessage(modifiedText, embedUser, embedColor);
+  if (direction === DIRECTIONS.SANTA_TO_PUBLIC) {
     embed.setTimestamp();
   }
 
@@ -470,10 +476,8 @@ async function sendSantaMessage(
   }
 }
 
-// Max characters of embed description per history page (Discord's limit is 4096).
-const HISTORY_PAGE_CHARS = 3800;
-// String Select supports a max of 25 options; 2 are reserved for Santa and Receiver.
-const HISTORY_MAX_USER_OPTIONS = 23;
+// Santa and Receiver take up options in the history select menu, and the rest are users.
+const HISTORY_MAX_USER_OPTIONS = DISCORD_LIMITS.SELECT_OPTIONS - SANTA_LIMITS.HISTORY_RESERVED_OPTIONS;
 
 interface HistoryRow {
   sender_id: string;
@@ -544,16 +548,16 @@ async function buildHistorySelectRow(client: Client, userId: string, selected?: 
       {
         label: "Santa",
         description: "Your conversation with your Secret Santa.",
-        value: "SANTA",
+        value: TARGETS.SANTA,
         emoji: { name: "🎅" },
-        default: selected === "SANTA",
+        default: selected === TARGETS.SANTA,
       },
       {
         label: "Receiver",
         description: "Your conversation with your receiver.",
-        value: "RECEIVER",
+        value: TARGETS.RECEIVER,
         emoji: { name: "🎁" },
-        default: selected === "RECEIVER",
+        default: selected === TARGETS.RECEIVER,
       },
       ...userOptions,
     );
@@ -597,9 +601,9 @@ function buildHistoryButtonRow(value: string, page: number, pageCount: number) {
 async function buildHistoryView(client: Client, userId: string, value: string, page?: number) {
   // Anything that isn't SANTA/RECEIVER is a user ID picked from the dropdown.
   let otherId: string | undefined;
-  if (value === "SANTA") {
+  if (value === TARGETS.SANTA) {
     otherId = SantaManager.getSanta(userId);
-  } else if (value === "RECEIVER") {
+  } else if (value === TARGETS.RECEIVER) {
     otherId = SantaManager.getReceiver(userId);
   } else if (SantaManager.isRegistered(value) && value !== userId) {
     otherId = value;
@@ -609,21 +613,36 @@ async function buildHistoryView(client: Client, userId: string, value: string, p
   }
 
   const other = await client.users.fetch(otherId).catch(() => null);
-  const isSanta = value === "SANTA";
-  // Santa's identity is secret, and users messaged via `/ss msg` -> User only know you as someone's Santa.
-  const otherName = isSanta ? "Santa" : other?.displayName ?? "Unknown user";
-  const title = isSanta
-    ? "🎅 Conversation with your Santa"
-    : value === "RECEIVER"
-    ? `🎁 Conversation with your receiver, ${otherName}`
-    : `✉️ Conversation with ${otherName}`;
-  const color = isSanta ? 0xE74C3C : value === "RECEIVER" ? 0x2ECC71 : 0xB377FF;
+  const isSanta = value === TARGETS.SANTA;
+  const isReceiver = value === TARGETS.RECEIVER;
+
+  let otherName = other?.displayName ?? "Unknown user";
+  if (isSanta) {
+    otherName = "Santa";
+  }
+
+  let title = `✉️ Conversation with ${otherName}`;
+  let color: number = SANTA_COLORS.USER;
+  if (isSanta) {
+    title = "🎅 Conversation with your Santa";
+    color = SANTA_COLORS.SANTA;
+  } else if (isReceiver) {
+    title = `🎁 Conversation with your receiver, ${otherName}`;
+    color = SANTA_COLORS.RECEIVER;
+  }
 
   // Keep threads separate: the same person can be your Santa/Receiver and a User you messaged.
-  const thread = value === "SANTA" || value === "RECEIVER" ? SantaManager.THREADS[value] : SantaManager.THREADS.USER;
+  let thread = SantaManager.THREADS[TARGETS.USER];
+  if (isSanta) {
+    thread = SantaManager.THREADS[TARGETS.SANTA];
+  } else if (isReceiver) {
+    thread = SantaManager.THREADS[TARGETS.RECEIVER];
+  }
+
   const history = SantaManager.getConversationHistory(userId, otherId, thread) as HistoryRow[];
   const selectRow = await buildHistorySelectRow(client, userId, value);
   const embed = new EmbedBuilder().setColor(color).setTitle(title);
+
   if (isSanta) {
     const avatar = SantaManager.getConfig().santa_avatar;
     if (avatar) {
@@ -646,28 +665,45 @@ async function buildHistoryView(client: Client, userId: string, value: string, p
     const text = row.processed_content ?? row.original_content;
     // SQLite timestamps are UTC with no zone, so tag them as such before parsing
     const unixTime = Math.floor(new Date(`${row.timestamp.replace(" ", "T")}Z`).getTime() / 1000);
-    let entry = `**${sentByMe ? "You" : otherName}** • <t:${unixTime}:f>\n${truncate(text, 1500)}`;
+
+    let senderName = otherName;
+    if (sentByMe) {
+      senderName = "You";
+    }
+
+    let entry = `**${senderName}** • <t:${unixTime}:f>\n${truncate(text, SANTA_LIMITS.HISTORY_ENTRY_CHARS)}`;
     if (sentByMe && row.processed_content && row.processed_content !== row.original_content) {
       // Blockquote needs `> ` on every line, and matches body font size
-      const original = truncate(row.original_content, 500).split("\n").map((line) => `> ${line}`).join("\n");
+      const original = truncate(row.original_content, SANTA_LIMITS.HISTORY_ORIGINAL_CHARS).split("\n").map((line) => `> ${line}`).join("\n");
       entry += `\n> *Original:*\n${original}`;
     }
+
     // +2 is the "\n\n" separator.
-    if (current && current.length + entry.length + 2 > HISTORY_PAGE_CHARS) {
+    if (current && current.length + entry.length + 2 > SANTA_LIMITS.HISTORY_PAGE_CHARS) {
       pages.push(current);
       current = entry;
+    } else if (current) {
+      current = `${current}\n\n${entry}`;
     } else {
-      current = current ? `${current}\n\n${entry}` : entry;
+      current = entry;
     }
   }
   pages.push(current);
 
   // Default to the last page; clamp in case history changed since the button was made.
-  const requested = page !== undefined && Number.isFinite(page) ? page : pages.length - 1;
+  let requested = pages.length - 1;
+  if (page !== undefined && Number.isFinite(page)) {
+    requested = page;
+  }
   const pageIndex = Math.min(Math.max(requested, 0), pages.length - 1);
+
+  let messageLabel = "messages";
+  if (history.length === 1) {
+    messageLabel = "message";
+  }
   embed
     .setDescription(pages[pageIndex])
-    .setFooter({ text: `Page ${pageIndex + 1} of ${pages.length} • ${history.length} message${history.length === 1 ? "" : "s"}` });
+    .setFooter({ text: `Page ${pageIndex + 1} of ${pages.length} • ${history.length} ${messageLabel}` });
 
   const components = [selectRow, buildHistoryButtonRow(value, pageIndex, pages.length)];
   return { content: "", embeds: [embed], components };

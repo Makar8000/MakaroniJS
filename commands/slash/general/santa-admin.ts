@@ -2,6 +2,7 @@ import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import type { SlashCommand } from "../../../utils/types.ts";
 import SantaManager from "../../../utils/santa/santa-manager.ts";
 import SantaMessaging from "../../../utils/santa/santa-interactions.ts";
+import { DISCORD_LIMITS } from "../../../utils/santa/constants.ts";
 import config from "../../../config.ts";
 import logger from "../../../utils/logger.ts";
 
@@ -60,7 +61,7 @@ export default {
           option
             .setName("message")
             .setDescription("The message to send.")
-            .setMaxLength(2000)
+            .setMaxLength(DISCORD_LIMITS.MESSAGE_LENGTH)
             .setRequired(true)
         )
     )

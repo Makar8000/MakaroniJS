@@ -6,6 +6,7 @@ import { type Client, EmbedBuilder, type User } from "discord.js";
 import LLMManager from "../llm/llm-manager.ts";
 import config from "../../config.ts";
 import logger from "../logger.ts";
+import { DIRECTIONS, RP_MODES, SANTA_COLORS, SANTA_LIMITS, TARGETS } from "./constants.ts";
 
 /** A registered Secret Santa participant. */
 interface Santa {
@@ -196,7 +197,7 @@ function getGiftTrackingList(): { receiver_id: string; gift_status: string; gift
 }
 
 // Directions where the sender is roleplaying as Santa, so the rp-mode transform applies.
-const DIRECTIONS_WITH_RP_MODE = new Set(["SANTA_TO_RECEIVER", "SANTA_TO_PUBLIC", "SANTA_TO_USER"]);
+const DIRECTIONS_WITH_RP_MODE = new Set<string>([DIRECTIONS.SANTA_TO_RECEIVER, DIRECTIONS.SANTA_TO_PUBLIC, DIRECTIONS.SANTA_TO_USER]);
 
 /**
  * A conversation thread as seen by one participant: the direction of the messages they send into it,
@@ -209,24 +210,21 @@ interface Thread {
   incoming: string;
 }
 
-const THREADS: Record<"SANTA" | "RECEIVER" | "USER", Thread> = {
+const THREADS: Record<typeof TARGETS.SANTA | typeof TARGETS.RECEIVER | typeof TARGETS.USER, Thread> = {
   // You talking to your own Santa.
-  SANTA: { outgoing: "RECEIVER_TO_SANTA", incoming: "SANTA_TO_RECEIVER" },
+  [TARGETS.SANTA]: { outgoing: DIRECTIONS.RECEIVER_TO_SANTA, incoming: DIRECTIONS.SANTA_TO_RECEIVER },
   // You (as Santa) talking to your receiver.
-  RECEIVER: { outgoing: "SANTA_TO_RECEIVER", incoming: "RECEIVER_TO_SANTA" },
+  [TARGETS.RECEIVER]: { outgoing: DIRECTIONS.SANTA_TO_RECEIVER, incoming: DIRECTIONS.RECEIVER_TO_SANTA },
   // You (as an anonymous Santa) talking to a user you picked via `/ss msg` -> User, and their replies.
-  USER: { outgoing: "SANTA_TO_USER", incoming: "USER_TO_SANTA" },
+  [TARGETS.USER]: { outgoing: DIRECTIONS.SANTA_TO_USER, incoming: DIRECTIONS.USER_TO_SANTA },
 };
 
 // Directions whose conversation history should be fetched for LLM context in transformMessage,
 // mapped to the thread that history is restricted to.
 const HISTORY_THREAD_FOR_DIRECTION: Record<string, Thread> = {
-  SANTA_TO_RECEIVER: THREADS.RECEIVER,
-  SANTA_TO_USER: THREADS.USER,
+  [DIRECTIONS.SANTA_TO_RECEIVER]: THREADS.RECEIVER,
+  [DIRECTIONS.SANTA_TO_USER]: THREADS.USER,
 };
-
-// Max number of recent messages passed to the LLM as conversation context.
-const HISTORY_LIMIT = 30;
 
 /**
  * Transforms the provided message using conversation history context if applicable.
@@ -246,7 +244,7 @@ const HISTORY_LIMIT = 30;
  */
 async function transformMessage(senderId: string, targetId: string, direction: string, text: string, rpMode?: string) {
   // Non-Santa directions and disabled RP mode send the raw message without any LLM processing.
-  if (!DIRECTIONS_WITH_RP_MODE.has(direction) || !rpMode || rpMode === "DISABLED") {
+  if (!DIRECTIONS_WITH_RP_MODE.has(direction) || !rpMode || rpMode === RP_MODES.DISABLED) {
     return text;
   }
 
@@ -254,7 +252,7 @@ async function transformMessage(senderId: string, targetId: string, direction: s
 
   const thread = HISTORY_THREAD_FOR_DIRECTION[direction];
   if (thread) {
-    const history = getConversationHistory(senderId, targetId, thread, HISTORY_LIMIT);
+    const history = getConversationHistory(senderId, targetId, thread, SANTA_LIMITS.LLM_HISTORY_MESSAGES);
 
     // Format the database history records into standard LLM conversation objects.
     // Sender is 'assistant' role, Target is 'user' role
@@ -329,10 +327,10 @@ function getMessagedTargets(senderId: string): string[] {
   const rows = db.prepare(`
     SELECT target_id
     FROM message_history
-    WHERE sender_id = ? AND direction = 'SANTA_TO_USER'
+    WHERE sender_id = ? AND direction = ?
     GROUP BY target_id
     ORDER BY MAX(message_id) DESC
-  `).all(senderId);
+  `).all(senderId, DIRECTIONS.SANTA_TO_USER);
   return rows.map((row: { target_id: string }) => row.target_id);
 }
 
@@ -342,7 +340,6 @@ function getMessagedTargets(senderId: string): string[] {
  *  False if no valid pairing could be made.
  *  Otherwise an object { failed } listing the Discord IDs of santas who could not be DMed.
  */
-// deno-lint-ignore require-await
 async function start(client: Client) {
   const santas = getAll(true);
   if (!santas.length) {
@@ -361,7 +358,7 @@ async function start(client: Client) {
   });
   transaction(santas);
 
-  return resendPairs(client);
+  return await resendPairs(client);
 }
 
 /**
@@ -386,13 +383,12 @@ async function dmSantas(client: Client, santaIds: string[], getPayload: (santaId
  *  False if the session hasn't started (there are no pairs).
  *  Otherwise an object { failed } listing the Discord IDs of santas who could not be DMed.
  */
-// deno-lint-ignore require-await
 async function resendPairs(client: Client) {
   if (!started()) {
     return false;
   }
   const pairs = getSelectedPairs();
-  return dmSantas(client, Object.keys(pairs), async (santaId: string) => {
+  return await dmSantas(client, Object.keys(pairs), async (santaId: string) => {
     const receiverId = pairs[santaId];
     const receiverUser = await client.users.fetch(receiverId);
     return { embeds: [getEmbedForSanta(receiverUser, getParticipant(receiverId))] };
@@ -435,7 +431,7 @@ function getEmbedForSanta(user: User, registrationInfo: Santa) {
     inline: false,
   }];
   const embed = new EmbedBuilder()
-    .setColor(0x22E669)
+    .setColor(SANTA_COLORS.RECEIVER_ASSIGNED)
     .setAuthor({
       name: `${user.displayName} was selected as your receiver!`,
       iconURL: user.displayAvatarURL(),
@@ -452,15 +448,18 @@ function getEmbedForSanta(user: User, registrationInfo: Santa) {
  * @param {User | String} user
  *  The discord user who will send the message, or Santa if undefined.
  *  Can also be a string if the Santa is for someone else
+ * @param {Number} userColor
+ *  The embed color to use when the message is sent by a discord user (not a Santa).
+ *  Defaults to the color for a user you messaged via `/ss msg` -> User.
  * @returns
  *  The Embed to send.
  */
-function getEmbedForMessage(message: string, user?: User | string) {
+function getEmbedForMessage(message: string, user?: User | string, userColor: number = SANTA_COLORS.USER) {
   if (!user || typeof user === "string") {
     const row = db.prepare("SELECT value FROM config WHERE key = 'santa_avatar'").get();
     const avatarUrl = row?.value;
     const embed = new EmbedBuilder()
-      .setColor(0xE74C3C)
+      .setColor(SANTA_COLORS.SANTA)
       .setAuthor({
         name: `${typeof user === "string" ? user + "'s " : ""}${"Santa"}`,
         iconURL: avatarUrl,
@@ -469,7 +468,7 @@ function getEmbedForMessage(message: string, user?: User | string) {
     return embed;
   } else {
     const embed = new EmbedBuilder()
-      .setColor(0xB377FF)
+      .setColor(userColor)
       .setAuthor({
         name: user.displayName,
         iconURL: user.displayAvatarURL(),
