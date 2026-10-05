@@ -563,14 +563,22 @@ async function warmUserCache(client: Client) {
 }
 
 /**
- * Loads the default santa config. Only called when the DB hasn't been seeded yet.
+ * Reads and parses santas-default.jsonc.
  */
-function seedDefaults() {
-  const santaConf = parseJsonc(Deno.readTextFileSync(join(import.meta.dirname!, "santas-default.jsonc"))) as {
+function loadDefaults() {
+  return parseJsonc(Deno.readTextFileSync(join(import.meta.dirname!, "santas-default.jsonc"))) as {
     santaAvatar?: string;
     defaultRpMode?: string;
     blacklistedPairs?: Record<string, string[]>;
   };
+}
+
+/**
+ * Loads the default santa config, creates the DB if it doesnt
+ * exist, and updates restricted pairs based on the config
+ */
+function seedDefaults() {
+  const santaConf = loadDefaults();
   if (!santaConf.santaAvatar) {
     throw new Error("No Santa avatar defined");
   }
@@ -589,11 +597,11 @@ function seedDefaults() {
       }
     }
 
-    db.prepare("INSERT INTO config (key, value) VALUES ('game_started', 'false')").run();
-    db.prepare("INSERT INTO config (key, value) VALUES ('channel_id', ?)").run(config.channels.SECRET_SANTA);
-    db.prepare("INSERT INTO config (key, value) VALUES ('santa_avatar', ?)").run(santaConf.santaAvatar);
-    db.prepare("INSERT INTO config (key, value) VALUES ('rp_mode_selection_allowed', 'false')").run();
-    db.prepare("INSERT INTO config (key, value) VALUES ('default_rp_mode', ?)").run(santaConf.defaultRpMode);
+    db.prepare("INSERT OR IGNORE INTO config (key, value) VALUES ('game_started', 'false')").run();
+    db.prepare("INSERT OR IGNORE INTO config (key, value) VALUES ('channel_id', ?)").run(config.channels.SECRET_SANTA);
+    db.prepare("INSERT OR IGNORE INTO config (key, value) VALUES ('santa_avatar', ?)").run(santaConf.santaAvatar);
+    db.prepare("INSERT OR IGNORE INTO config (key, value) VALUES ('rp_mode_selection_allowed', 'false')").run();
+    db.prepare("INSERT OR IGNORE INTO config (key, value) VALUES ('default_rp_mode', ?)").run(santaConf.defaultRpMode);
   })();
 }
 
@@ -605,9 +613,7 @@ function seedDefaults() {
  */
 function init(client: Client) {
   db.exec(Deno.readTextFileSync(join(import.meta.dirname!, "ss-schema.sql")));
-  if (!db.prepare("SELECT 1 FROM config WHERE key = 'game_started'").get()) {
-    seedDefaults();
-  }
+  seedDefaults();
   warmUserCache(client).catch((err) => logger.error("Failed to warm the Secret Santa user cache:", err));
 }
 

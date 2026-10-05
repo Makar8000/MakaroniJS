@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS restricted_pairs (
     receiver_id TEXT,
     PRIMARY KEY (giver_id, receiver_id)
 );
+DELETE FROM restricted_pairs;
 
 -- 5. Message History Table
 CREATE TABLE IF NOT EXISTS message_history (
