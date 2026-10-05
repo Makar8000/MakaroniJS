@@ -4,6 +4,7 @@ import {
   type ButtonInteraction,
   ButtonStyle,
   type Client,
+  EmbedBuilder,
   type InteractionReplyOptions,
   LabelBuilder,
   MessageFlags,
@@ -442,25 +443,238 @@ async function sendSantaMessage(
     components: replyRow ? [replyRow] : [],
   });
   // Only logged once delivered, so failed sends never pollute the LLM conversation history.
-  SantaManager.logMessage(interaction.user.id, destination.id, msg, modifiedText);
+  SantaManager.logMessage(interaction.user.id, destination.id, direction, msg, modifiedText);
 
   // Message is already sent; a failed DM copy to the sender (e.g. DMs disabled) is not an error.
-  let contentOutput = `Sent the following message to ${DIRECTION_LABEL[direction]}:\n${modifiedText}`;
+  const targetLabel = DIRECTIONS_WITH_EXPLICIT_TARGET.has(direction) && "displayName" in destination
+    ? `**${destination.displayName}**`
+    : DIRECTION_LABEL[direction];
+  let contentOutput = `Sent the following message to ${targetLabel}:\n${modifiedText}`;
   const wasTransformed = modifiedText !== msg;
   if (wasTransformed) {
     contentOutput += `\n\nOriginal:\n${msg}`;
   }
-  await interaction.followUp({
-    content: "Success",
-    flags: MessageFlags.Ephemeral,
-  });
   try {
     await interaction.user.send({
       content: contentOutput,
     });
+    // The DM copy doubles as the confirmation, so the deferred ephemeral reply is not needed.
+    await interaction.deleteReply();
   } catch (err) {
     logger.error(`Failed to DM sender ${interaction.user.id} a copy of their sent message:`, err);
+    // Fall back to confirming in the ephemeral reply so the sender still knows it was sent.
+    await interaction.followUp({
+      content: `${contentOutput}\n\n(I was unable to DM you a copy of this message.)`,
+      flags: MessageFlags.Ephemeral,
+    });
   }
+}
+
+// Max characters of embed description per history page (Discord's limit is 4096).
+const HISTORY_PAGE_CHARS = 3800;
+// String Select supports a max of 25 options; 2 are reserved for Santa and Receiver.
+const HISTORY_MAX_USER_OPTIONS = 23;
+
+interface HistoryRow {
+  sender_id: string;
+  target_id: string;
+  original_content: string;
+  processed_content: string | null;
+  timestamp: string;
+}
+
+/**
+ * Truncates text to a maximum length, adding an ellipsis if it was cut.
+ * @param {String} text The text to truncate.
+ * @param {Number} max The maximum length.
+ * @returns {String} The possibly-truncated text.
+ */
+function truncate(text: string, max: number) {
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+/**
+ * Builds the "whose history do you want to view?" select menu shown after `/ss history`.
+ * Options are Santa, Receiver, and every registered user the member has messaged via `/ss msg` -> User.
+ * @param {Client} client The Discord client.
+ * @param {String} userId The Discord ID of the user viewing their history.
+ * @param {String} [selected] The currently selected option value, if any.
+ * @returns {Promise<ActionRowBuilder>} The ActionRowBuilder containing the history select menu.
+ */
+async function buildHistorySelectRow(client: Client, userId: string, selected?: string) {
+  // Santa/Receiver are kept as their own options but are not excluded here: someone can be both your
+  // Santa and a User you messaged, and those are separate conversations.
+  const userIds = SantaManager.getMessagedTargets(userId)
+    .filter((id) => id !== userId && SantaManager.isRegistered(id))
+    .slice(0, HISTORY_MAX_USER_OPTIONS);
+
+  const userOptions = await Promise.all(userIds.map(async (id) => {
+    const user = await client.users.fetch(id).catch(() => null);
+    return {
+      label: user?.displayName ?? "Unknown user",
+      description: "A user you messaged anonymously.",
+      value: id,
+      emoji: { name: "✉️" },
+      default: id === selected,
+    };
+  }));
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId(`${COMMAND_NAME}:history`)
+    .setPlaceholder("Whose history do you want to view?")
+    .addOptions(
+      {
+        label: "Santa",
+        description: "Your conversation with your Secret Santa.",
+        value: "SANTA",
+        emoji: { name: "🎅" },
+        default: selected === "SANTA",
+      },
+      {
+        label: "Receiver",
+        description: "Your conversation with your receiver.",
+        value: "RECEIVER",
+        emoji: { name: "🎁" },
+        default: selected === "RECEIVER",
+      },
+      ...userOptions,
+    );
+  return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+}
+
+/**
+ * Builds the page navigation button row for the history viewer.
+ * @param {String} value The selected history option value ('SANTA', 'RECEIVER', or a user ID).
+ * @param {Number} page The current zero-based page.
+ * @param {Number} pageCount The total number of pages.
+ * @returns {ActionRowBuilder} The ActionRowBuilder containing the navigation buttons.
+ */
+function buildHistoryButtonRow(value: string, page: number, pageCount: number) {
+  // The trailing label keeps customIds unique (e.g. "first" and "prev" can target the same page).
+  const id = (target: number, label: string) => `${COMMAND_NAME}:histpage:${value}:${target}:${label}`;
+  const atStart = page <= 0;
+  const atEnd = page >= pageCount - 1;
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(id(0, "first")).setEmoji("⏮️").setStyle(ButtonStyle.Secondary).setDisabled(atStart),
+    new ButtonBuilder().setCustomId(id(page - 1, "prev")).setEmoji("◀️").setStyle(ButtonStyle.Primary).setDisabled(atStart),
+    new ButtonBuilder()
+      .setCustomId(`${COMMAND_NAME}:histpage:indicator`)
+      .setLabel(`${page + 1} / ${pageCount}`)
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(true),
+    new ButtonBuilder().setCustomId(id(page + 1, "next")).setEmoji("▶️").setStyle(ButtonStyle.Primary).setDisabled(atEnd),
+    new ButtonBuilder().setCustomId(id(pageCount - 1, "last")).setEmoji("⏭️").setStyle(ButtonStyle.Secondary).setDisabled(atEnd),
+  );
+}
+
+/**
+ * Builds the message payload (select menu, embed, and page buttons) for viewing a conversation history.
+ * Messages are ordered oldest to newest, and the last page is shown unless a page is specified.
+ * @param {Client} client The Discord client.
+ * @param {String} userId The Discord ID of the user viewing their history.
+ * @param {String} value The selected history option value ('SANTA', 'RECEIVER', or a user ID).
+ * @param {Number} [page] The zero-based page to show. Defaults to the last page.
+ * @returns The payload fields to send, or null if the selection can't be resolved to another user.
+ */
+async function buildHistoryView(client: Client, userId: string, value: string, page?: number) {
+  let otherId: string | undefined;
+  if (value === "SANTA") {
+    otherId = SantaManager.getSanta(userId);
+  } else if (value === "RECEIVER") {
+    otherId = SantaManager.getReceiver(userId);
+  } else if (SantaManager.isRegistered(value) && value !== userId) {
+    otherId = value;
+  }
+  if (!otherId) {
+    return null;
+  }
+
+  const other = await client.users.fetch(otherId).catch(() => null);
+  const isSanta = value === "SANTA";
+  // Santa's identity is secret, and users messaged via `/ss msg` -> User only know you as someone's Santa.
+  const otherName = isSanta ? "Santa" : other?.displayName ?? "Unknown user";
+  const title = isSanta
+    ? "🎅 Conversation with your Santa"
+    : value === "RECEIVER"
+    ? `🎁 Conversation with your receiver, ${otherName}`
+    : `✉️ Conversation with ${otherName}`;
+  const color = isSanta ? 0xE74C3C : value === "RECEIVER" ? 0x2ECC71 : 0xB377FF;
+
+  // Only this thread: the same person can be both a Santa/Receiver and a User conversation.
+  const thread = value === "SANTA" || value === "RECEIVER" ? SantaManager.THREADS[value] : SantaManager.THREADS.USER;
+  const history = SantaManager.getConversationHistory(userId, otherId, thread) as HistoryRow[];
+  const selectRow = await buildHistorySelectRow(client, userId, value);
+  const embed = new EmbedBuilder().setColor(color).setTitle(title);
+  if (isSanta) {
+    const avatar = SantaManager.getConfig().santa_avatar;
+    if (avatar) {
+      embed.setThumbnail(avatar);
+    }
+  } else if (other) {
+    embed.setThumbnail(other.displayAvatarURL());
+  }
+
+  if (!history.length) {
+    embed.setDescription("*No messages yet. Use `/ss msg` to start the conversation!*");
+    return { content: "", embeds: [embed], components: [selectRow] };
+  }
+
+  // Group the (chronological) entries into pages that fit within the embed description limit.
+  const pages: string[] = [];
+  let current = "";
+  for (const row of history) {
+    const sentByMe = row.sender_id === userId;
+    const text = row.processed_content ?? row.original_content;
+    const unixTime = Math.floor(new Date(`${row.timestamp.replace(" ", "T")}Z`).getTime() / 1000);
+    let entry = `**${sentByMe ? "You" : otherName}** • <t:${unixTime}:f>\n${truncate(text, 1500)}`;
+    if (sentByMe && row.processed_content && row.processed_content !== row.original_content) {
+      entry += `\n-# Original: ${truncate(row.original_content, 500).replaceAll("\n", " ")}`;
+    }
+    if (current && current.length + entry.length + 2 > HISTORY_PAGE_CHARS) {
+      pages.push(current);
+      current = entry;
+    } else {
+      current = current ? `${current}\n\n${entry}` : entry;
+    }
+  }
+  pages.push(current);
+
+  const pageIndex = Math.min(Math.max(page ?? pages.length - 1, 0), pages.length - 1);
+  embed
+    .setDescription(pages[pageIndex])
+    .setFooter({ text: `Page ${pageIndex + 1} of ${pages.length} • ${history.length} message${history.length === 1 ? "" : "s"}` });
+
+  const components = [selectRow, buildHistoryButtonRow(value, pageIndex, pages.length)];
+  return { content: "", embeds: [embed], components };
+}
+
+/**
+ * Updates the message a `/ss history` component was attached to with the requested history view.
+ * @param {StringSelectMenuInteraction | ButtonInteraction} interaction The component interaction.
+ * @param {String} value The selected history option ('SANTA', 'RECEIVER', or a user ID).
+ * @param {Number} [page] The zero-based page to show. Defaults to the last page.
+ */
+async function showHistory(interaction: StringSelectMenuInteraction | ButtonInteraction, value: string, page?: number) {
+  if (!SantaManager.isRegistered(interaction.user.id) || !SantaManager.started()) {
+    await interaction.update({
+      content: "[ERROR] You are not registered or the Secret Santa session is not active.",
+      embeds: [],
+      components: [],
+    });
+    return;
+  }
+
+  await interaction.deferUpdate();
+  const view = await buildHistoryView(interaction.client, interaction.user.id, value, page);
+  if (!view) {
+    await interaction.editReply({
+      content: "[ERROR] Unable to find a conversation for that selection.",
+      embeds: [],
+      components: [await buildHistorySelectRow(interaction.client, interaction.user.id)],
+    });
+    return;
+  }
+  await interaction.editReply(view);
 }
 
 /**
@@ -503,6 +717,9 @@ export default {
   handleError,
   dmFailedWarning,
   buildTargetSelectRow,
+  buildHistorySelectRow,
+  buildHistoryView,
+  showHistory,
   buildComposeModal,
   buildReplyModal,
   buildRegisterModal,

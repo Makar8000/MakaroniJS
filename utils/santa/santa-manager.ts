@@ -198,8 +198,32 @@ function getGiftTrackingList(): { receiver_id: string; gift_status: string; gift
 // Directions where the sender is roleplaying as Santa, so the rp-mode transform applies.
 const DIRECTIONS_WITH_RP_MODE = new Set(["SANTA_TO_RECEIVER", "SANTA_TO_PUBLIC", "SANTA_TO_USER"]);
 
-// Directions whose conversation history should be fetched for LLM context in transformMessage.
-const DIRECTIONS_WITH_HISTORY = new Set(["SANTA_TO_RECEIVER", "SANTA_TO_USER"]);
+/**
+ * A conversation thread as seen by one participant: the direction of the messages they send into it,
+ * and the direction of the messages the other person sends back.
+ * Threads must never be mixed: the same two people can talk via the Santa/Receiver pairing, via
+ * `/ss msg` -> User with one of them as the anonymous Santa, and the other way around.
+ */
+interface Thread {
+  outgoing: string;
+  incoming: string;
+}
+
+const THREADS: Record<"SANTA" | "RECEIVER" | "USER", Thread> = {
+  // You talking to your own Santa.
+  SANTA: { outgoing: "RECEIVER_TO_SANTA", incoming: "SANTA_TO_RECEIVER" },
+  // You (as Santa) talking to your receiver.
+  RECEIVER: { outgoing: "SANTA_TO_RECEIVER", incoming: "RECEIVER_TO_SANTA" },
+  // You (as an anonymous Santa) talking to a user you picked via `/ss msg` -> User, and their replies.
+  USER: { outgoing: "SANTA_TO_USER", incoming: "USER_TO_SANTA" },
+};
+
+// Directions whose conversation history should be fetched for LLM context in transformMessage,
+// mapped to the thread that history is restricted to.
+const HISTORY_THREAD_FOR_DIRECTION: Record<string, Thread> = {
+  SANTA_TO_RECEIVER: THREADS.RECEIVER,
+  SANTA_TO_USER: THREADS.USER,
+};
 
 // Max number of recent messages passed to the LLM as conversation context.
 const HISTORY_LIMIT = 30;
@@ -228,8 +252,9 @@ async function transformMessage(senderId: string, targetId: string, direction: s
 
   let formattedHistory: ChatMessages[] = [];
 
-  if (DIRECTIONS_WITH_HISTORY.has(direction)) {
-    const history = getConversationHistory(senderId, targetId, HISTORY_LIMIT);
+  const thread = HISTORY_THREAD_FOR_DIRECTION[direction];
+  if (thread) {
+    const history = getConversationHistory(senderId, targetId, thread, HISTORY_LIMIT);
 
     // Format the database history records into standard LLM conversation objects.
     // Sender is 'assistant' role, Target is 'user' role
@@ -249,40 +274,66 @@ async function transformMessage(senderId: string, targetId: string, direction: s
  *  The Discord ID of the user sending the message.
  * @param {String} targetId
  *  The Discord ID of the message's recipient.
+ * @param {String} direction
+ *  The message-routing direction, which identifies the conversation thread the message belongs to.
  * @param {String} originalText
  *  The original raw content submitted by the user.
  * @param {String} processedText
  *  The text that was actually sent.
  */
-function logMessage(senderId: string, targetId: string, originalText: string, processedText: string) {
+function logMessage(senderId: string, targetId: string, direction: string, originalText: string, processedText: string) {
   db.prepare(`
-    INSERT INTO message_history (sender_id, target_id, original_content, processed_content)
-    VALUES (?, ?, ?, ?)
-  `).run(senderId, targetId, originalText, processedText);
+    INSERT INTO message_history (sender_id, target_id, direction, original_content, processed_content)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(senderId, targetId, direction, originalText, processedText);
 }
 
 /**
- * Gets the message history for a 2-party conversation thread between sender and target.
+ * Gets the message history for one conversation thread between sender and target.
+ * The same two people can have several threads (see THREADS), so messages only count if they were
+ * sent in the right direction by the right person.
  * @param {String} senderId
  *  The Discord ID of the user whose conversation thread should be retrieved.
  * @param {String} targetId
  *  The Discord ID of the other participant in the conversation thread.
+ * @param {Thread} thread
+ *  The thread to look up (one of THREADS), from the point of view of senderId.
  * @param {Number} limit
  *  The maximum number of recent messages to look up. Defaults to -1 (no limit).
  * @returns
  *  An array of history transaction ledger entries sorted chronologically.
  */
-function getConversationHistory(senderId: string, targetId: string, limit = -1) {
+function getConversationHistory(senderId: string, targetId: string, thread: Thread, limit = -1) {
   const stmt = db.prepare(`
-    SELECT sender_id, target_id, original_content, processed_content, timestamp
+    SELECT sender_id, target_id, direction, original_content, processed_content, timestamp
     FROM message_history
     WHERE
-      (sender_id = ? AND target_id = ?)
-      OR (sender_id = ? AND target_id = ?)
+      (sender_id = ? AND target_id = ? AND direction = ?)
+      OR (sender_id = ? AND target_id = ? AND direction = ?)
     ORDER BY message_id DESC
     LIMIT ?
   `);
-  return stmt.all(senderId, targetId, targetId, senderId, limit).reverse();
+  return stmt.all(senderId, targetId, thread.outgoing, targetId, senderId, thread.incoming, limit).reverse();
+}
+
+/**
+ * Gets the distinct users a user has deliberately messaged via `/ss msg` -> User, most recently messaged first.
+ * Replies to an anonymous Santa (USER_TO_SANTA) are excluded on purpose, since listing those would
+ * reveal who the anonymous Santa is.
+ * @param {String} senderId
+ *  The Discord ID of the user whose sent messages should be searched.
+ * @returns {String[]}
+ *  The Discord IDs of every user this user has messaged via `/ss msg` -> User.
+ */
+function getMessagedTargets(senderId: string): string[] {
+  const rows = db.prepare(`
+    SELECT target_id
+    FROM message_history
+    WHERE sender_id = ? AND direction = 'SANTA_TO_USER'
+    GROUP BY target_id
+    ORDER BY MAX(message_id) DESC
+  `).all(senderId);
+  return rows.map((row: { target_id: string }) => row.target_id);
 }
 
 /**
@@ -669,6 +720,7 @@ function close() {
 
 export default {
   DIRECTIONS_WITH_RP_MODE,
+  THREADS,
   isRegistered,
   getParticipant,
   addSanta,
@@ -684,6 +736,8 @@ export default {
   getGiftTrackingList,
   transformMessage,
   logMessage,
+  getConversationHistory,
+  getMessagedTargets,
   start,
   resendPairs,
   messageAll,

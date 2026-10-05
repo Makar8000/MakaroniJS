@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS message_history (
     message_id INTEGER PRIMARY KEY AUTOINCREMENT,
     sender_id TEXT NOT NULL,
     target_id TEXT NOT NULL,
+    direction TEXT,
     original_content TEXT NOT NULL,
     processed_content TEXT,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,

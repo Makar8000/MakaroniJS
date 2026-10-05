@@ -15,6 +15,11 @@ export default {
     )
     .addSubcommand((subcommand) =>
       subcommand
+        .setName("history")
+        .setDescription("View your Secret Santa message history.")
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
         .setName("gift")
         .setDescription("Update your gift status milestone tracking details.")
         .addStringOption((option) =>
@@ -112,15 +117,42 @@ export default {
         components: [await SantaMessaging.buildTargetSelectRow(interaction.client, interaction.user.id)],
         flags: MessageFlags.Ephemeral,
       });
+    } else if (subcommand === "history") {
+      if (!SantaManager.isRegistered(interaction.user.id)) {
+        await interaction.reply({
+          content: "[ERROR] You are not registered.",
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+
+      if (!SantaManager.started()) {
+        await interaction.reply({
+          content: "[ERROR] The Secret Santa session has not started yet. There is no message history.",
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+
+      logger.debug("Showing history select menu...");
+      await interaction.reply({
+        content: "Whose message history do you want to view?",
+        components: [await SantaMessaging.buildHistorySelectRow(interaction.client, interaction.user.id)],
+        flags: MessageFlags.Ephemeral,
+      });
     }
   },
   /**
    * Handles select menu interactions namespaced under this command.
-   * Currently only utilized by `/ss msg`.
+   * Utilized by `/ss msg` (target selection) and `/ss history` (history selection).
    * @param {StringSelectMenuInteraction} interaction The select menu interaction to handle.
    */
   async selectMenu(interaction: StringSelectMenuInteraction) {
     const [, action] = interaction.customId.split(":");
+    if (action === "history") {
+      await SantaMessaging.showHistory(interaction, interaction.values[0]);
+      return;
+    }
     if (action !== "msgtarget") {
       return;
     }
@@ -145,6 +177,11 @@ export default {
    */
   async button(interaction) {
     const [, action, direction, targetId] = interaction.customId.split(":");
+    if (action === "histpage") {
+      // customId format: ss:histpage:<value>:<page>:<label>
+      await SantaMessaging.showHistory(interaction, direction, Number(targetId));
+      return;
+    }
     if (action !== "reply") {
       return;
     }
@@ -191,7 +228,9 @@ export default {
         notes,
       });
       await interaction.reply({
-        content: `${added ? "Successfully registered." : "Successfully updated registration."} Below is a preview of how your Santa will receive your information:`,
+        content: `${
+          added ? "Successfully registered." : "Successfully updated registration."
+        } Below is a preview of how your Santa will receive your information:`,
         embeds: [SantaManager.getEmbedForSanta(interaction.user, { discordId: interaction.user.id, name, address, notes })],
         flags: MessageFlags.Ephemeral,
       });
