@@ -1,7 +1,7 @@
 {
   "tasks": {
     "start": "deno run --env-file --allow-net --allow-read --allow-write=data --allow-env --allow-ffi --allow-sys index.ts",
-    "prod": "pm2 start index.js --name makaroni --log data/Makaroni.log --interpreter deno --interpreter-args \"run --env-file --allow-net --allow-read --allow-write=data --allow-env --allow-ffi --allow-sys\"",
+    "prod": "pm2 start index.ts --name makaroni --log data/Makaroni.log --interpreter deno --interpreter-args \"run --env-file --allow-net --allow-read --allow-write=data --allow-env --allow-ffi --allow-sys\"",
     "stop": "pm2 stop makaroni",
     "monitor": "pm2 logs makaroni",
     "restart": "git pull && deno install --frozen && pm2 restart makaroni --update-env",
