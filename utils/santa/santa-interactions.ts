@@ -64,7 +64,7 @@ const REPLY_MODAL_TITLE: Record<string, string> = {
   RECEIVER_TO_SANTA: "Reply to Your Santa",
   SANTA_TO_RECEIVER: "Reply to Your Receiver",
   SANTA_TO_USER: "Reply Anonymously",
-  USER_TO_SANTA: "Reply Anonymously",
+  USER_TO_SANTA: "Reply to this Santa",
 };
 
 // Gift tracking milestone values -> friendly labels, used for the `/ss gift` choices and `/ss-admin giftlist`.
