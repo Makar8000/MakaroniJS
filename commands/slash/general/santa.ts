@@ -191,7 +191,8 @@ export default {
         notes,
       });
       await interaction.reply({
-        content: added ? "Successfully registered." : "Successfully updated registration.",
+        content: `${added ? "Successfully registered." : "Successfully updated registration."} Below is a preview of how your Santa will receive your information:`,
+        embeds: [SantaManager.getEmbedForSanta(interaction.user, { discordId: interaction.user.id, name, address, notes })],
         flags: MessageFlags.Ephemeral,
       });
       return;

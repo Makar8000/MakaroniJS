@@ -681,6 +681,7 @@ export default {
   start,
   resendPairs,
   messageAll,
+  getEmbedForSanta,
   getEmbedForMessage,
   reset,
   getAll,
