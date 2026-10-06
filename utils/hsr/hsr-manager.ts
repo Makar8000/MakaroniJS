@@ -106,7 +106,7 @@ async function checkForInclinationTypes(client: Client) {
       curInclData = newData;
     }
   } catch (error) {
-    logger.error("HSR inclination check failed:", error);
+    logger.error({ err: error }, "HSR inclination check failed:");
   }
 }
 

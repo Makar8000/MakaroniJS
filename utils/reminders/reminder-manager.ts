@@ -1,7 +1,7 @@
 import { join } from "@std/path";
 import scheduler from "node-schedule";
 import moment, { type DurationInputArg1, type DurationInputArg2 } from "moment";
-import AsyncLock from "async-lock";
+import { Semaphore } from "@std/async/unstable-semaphore";
 import Keyv from "keyv";
 import { KeyvFile } from "keyv-file";
 import { type Client, Collection } from "discord.js";
@@ -9,13 +9,26 @@ import logger from "../logger.ts";
 import type { Reminder } from "../types.ts";
 const jobs = new Collection<string, scheduler.Job>();
 
-const lock = new AsyncLock();
+const keysMutex = new Semaphore(1);
 const reminders = new Keyv({
   namespace: "reminders",
   store: new KeyvFile({
     filename: join(import.meta.dirname!, "../../data/reminders.json"),
   }),
 });
+
+/**
+ * Atomically updates the "keys" index of stored reminders.
+ * All reads and writes of the index must go through here so concurrent updates can't overwrite each other.
+ * @param {Function} update
+ *  Callback which mutates the index in place.
+ */
+async function updateKeys(update: (keys: Record<string, boolean>) => void) {
+  using _permit = await keysMutex.acquire();
+  const keys: Record<string, boolean> = (await reminders.get("keys")) ?? {};
+  update(keys);
+  await reminders.set("keys", keys);
+}
 
 /**
  * Schedules a new reminder.
@@ -31,15 +44,9 @@ async function scheduleReminder(client: Client, reminder: Reminder) {
     return null;
   }
 
-  reminders.set(reminder.id, reminder);
-  let keys: Record<string, boolean> | undefined = await reminders.get("keys");
-  lock.acquire("remindersLock", () => {
-    if (keys) {
-      keys[reminder.id] = true;
-    } else {
-      keys = { [reminder.id]: true };
-    }
-    reminders.set("keys", keys);
+  await reminders.set(reminder.id, reminder);
+  await updateKeys((keys) => {
+    keys[reminder.id] = true;
   });
   return startJob(client, reminder);
 }
@@ -76,11 +83,11 @@ async function getReminders(userId: string) {
  */
 async function cancelReminder(reminderId: string, userId: string) {
   const reminder = await reminders.get(reminderId);
-  if (jobs.has(reminder.id) && reminder.authorId === userId) {
+  if (reminder && jobs.has(reminder.id) && reminder.authorId === userId) {
     jobs.get(reminder.id)!.cancel();
-    const keys = await reminders.get("keys");
-    delete keys[reminder.id];
-    await reminders.set("keys", keys);
+    await updateKeys((keys) => {
+      delete keys[reminder.id];
+    });
     await reminders.delete(reminder.id);
     return true;
   }
@@ -137,9 +144,9 @@ async function sendReminder(client: Client, reminder: Reminder) {
       await client.users.send(reminder.authorId, message);
     }
 
-    const keys = await reminders.get("keys");
-    delete keys[reminder.id];
-    await reminders.set("keys", keys);
+    await updateKeys((keys) => {
+      delete keys[reminder.id];
+    });
     await reminders.delete(reminder.id);
 
     return true;

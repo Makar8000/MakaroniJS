@@ -645,7 +645,7 @@ async function warmUserCache(client: Client) {
       const members = await guild.members.fetch({ user: ids });
       members.forEach((member) => found.add(member.id));
     } catch (err) {
-      logger.error("Bulk member fetch failed, falling back to per-user fetches:", err);
+      logger.error({ err }, "Bulk member fetch failed, falling back to per-user fetches:");
     }
   }
 
@@ -705,7 +705,7 @@ function seedDefaults() {
 function init(client: Client) {
   db.exec(Deno.readTextFileSync(join(import.meta.dirname!, "ss-schema.sql")));
   seedDefaults();
-  warmUserCache(client).catch((err) => logger.error("Failed to warm the Secret Santa user cache:", err));
+  warmUserCache(client).catch((err) => logger.error({ err }, "Failed to warm the Secret Santa user cache:"));
 }
 
 /**

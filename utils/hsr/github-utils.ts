@@ -1,23 +1,25 @@
 import { Octokit } from "@octokit/rest";
-import { throttling } from "@octokit/plugin-throttling";
+import { throttling, type ThrottlingOptions } from "@octokit/plugin-throttling";
 import { retry } from "@octokit/plugin-retry";
 import { repoConfig } from "./config.ts";
 import logger from "../logger.ts";
 
+const throttle: ThrottlingOptions = {
+  onRateLimit: (retryAfter, options, _octokit, retryCount) => {
+    logger.warn(
+      `GitHub RateLimit detected for request: ${options.method} ${options.url}\nWill retry after approx. ${Math.round(retryAfter / 60)} minutes.`,
+    );
+    return retryCount < 1;
+  },
+  onSecondaryRateLimit: (_retryAfter, options) => {
+    logger.warn(`GitHub SecondaryRateLimit detected for request ${options.method} ${options.url}`);
+  },
+};
+
 const MyOctokit = Octokit.plugin(throttling, retry);
 const octokit = new MyOctokit({
   auth: Deno.env.get("GITHUB_TOKEN"),
-  throttle: {
-    onRateLimit: (retryAfter, options, _octokit, retryCount) => {
-      logger.warn(
-        `GitHub RateLimit detected for request: ${options.method} ${options.url}\nWill retry after approx. ${Math.round(retryAfter / 60)} minutes.`,
-      );
-      return retryCount < 1;
-    },
-    onSecondaryRateLimit: (_retryAfter, options) => {
-      logger.warn(`GitHub SecondaryRateLimit detected for request ${options.method} ${options.url}`);
-    },
-  },
+  throttle,
 });
 
 /**

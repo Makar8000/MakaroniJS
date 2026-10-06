@@ -123,8 +123,12 @@ export const getKeyvData = async ({ inputFile, namespace, key }: { inputFile: st
     return await data.get(key);
   }
 
+  if (!data.iterator) {
+    throw new Error(`Keyv store for namespace "${namespace}" does not support iteration`);
+  }
+
   const ret: Record<string, unknown> = {};
-  for await (const [k, v] of data.iterator()) {
+  for await (const [k, v] of data.iterator(namespace)) {
     ret[k] = v;
   }
   return ret;

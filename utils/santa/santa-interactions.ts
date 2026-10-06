@@ -474,7 +474,7 @@ async function sendSantaMessage(
     // The DM copy doubles as the confirmation, so the deferred ephemeral reply is not needed.
     await interaction.deleteReply();
   } catch (err) {
-    logger.error(`Failed to DM sender ${interaction.user.id} a copy of their sent message:`, err);
+    logger.error({ err }, `Failed to DM sender ${interaction.user.id} a copy of their sent message:`);
     // Fall back to confirming in the ephemeral reply so the sender still knows it was sent.
     const fallback = `${contentOutput}\n\n(I was unable to DM you a copy of this message.)`;
     for (const chunk of chunkText(fallback, DISCORD_LIMITS.MESSAGE_LENGTH)) {
@@ -774,7 +774,7 @@ async function handleError(interaction: RepliableInteraction, error: unknown) {
       await interaction.reply(payload);
     }
   } catch (notifyError) {
-    logger.error("Failed to notify user of the above error:", notifyError);
+    logger.error({ err: notifyError }, "Failed to notify user of the above error:");
   }
 }
 
