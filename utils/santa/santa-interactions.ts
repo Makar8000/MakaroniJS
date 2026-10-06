@@ -19,7 +19,8 @@ import {
 } from "discord.js";
 import SantaManager from "./santa-manager.ts";
 import logger from "../logger.ts";
-import { DIRECTIONS, DISCORD_LIMITS, RP_MODES, SANTA_COLORS, SANTA_LIMITS, TARGETS } from "./constants.ts";
+import { chunkText, truncate } from "../common.ts";
+import { ANONYMOUS_SANTA_PREFIX, DIRECTIONS, DISCORD_LIMITS, RP_MODES, SANTA_COLORS, SANTA_LIMITS, TARGETS } from "./constants.ts";
 
 // Namespace prefix for customIds built/parsed by this module, matching the `/ss` command name.
 const COMMAND_NAME = "ss";
@@ -451,28 +452,34 @@ async function sendSantaMessage(
   // Only logged once delivered, so failed sends never pollute the LLM conversation history.
   SantaManager.logMessage(interaction.user.id, destination.id, direction, msg, modifiedText);
 
-  // Message is already sent; a failed DM copy to the sender (e.g. DMs disabled) is not an error.
-  const targetLabel = DIRECTIONS_WITH_EXPLICIT_TARGET.has(direction) && "displayName" in destination
-    ? `**${destination.displayName}**`
-    : DIRECTION_LABEL[direction];
+  // Determine the label to use for the confirmation message
+  let targetLabel = DIRECTION_LABEL[direction];
+  if (direction === DIRECTIONS.SANTA_TO_USER && "displayName" in destination) {
+    targetLabel = `**${destination.displayName}**`;
+  } else if (direction === DIRECTIONS.USER_TO_SANTA) {
+    const santaReceiverId = SantaManager.getReceiver(destination.id);
+    const santaReceiver = santaReceiverId ? await client.users.fetch(santaReceiverId).catch(() => null) : null;
+    targetLabel = `**${santaReceiver?.displayName ?? "Unknown user"}'s Santa**`;
+  }
   let contentOutput = `Sent the following message to ${targetLabel}:\n${modifiedText}`;
   const wasTransformed = modifiedText !== msg;
   if (wasTransformed) {
     contentOutput += `\n\nOriginal:\n${msg}`;
   }
+  // The confirmation can exceed Discord's message limit (message + "Original:" copy), so send it in pieces.
   try {
-    await interaction.user.send({
-      content: contentOutput,
-    });
+    for (const chunk of chunkText(contentOutput, DISCORD_LIMITS.MESSAGE_LENGTH)) {
+      await interaction.user.send({ content: chunk });
+    }
     // The DM copy doubles as the confirmation, so the deferred ephemeral reply is not needed.
     await interaction.deleteReply();
   } catch (err) {
     logger.error(`Failed to DM sender ${interaction.user.id} a copy of their sent message:`, err);
     // Fall back to confirming in the ephemeral reply so the sender still knows it was sent.
-    await interaction.followUp({
-      content: `${contentOutput}\n\n(I was unable to DM you a copy of this message.)`,
-      flags: MessageFlags.Ephemeral,
-    });
+    const fallback = `${contentOutput}\n\n(I was unable to DM you a copy of this message.)`;
+    for (const chunk of chunkText(fallback, DISCORD_LIMITS.MESSAGE_LENGTH)) {
+      await interaction.followUp({ content: chunk, flags: MessageFlags.Ephemeral });
+    }
   }
 }
 
@@ -488,36 +495,9 @@ interface HistoryRow {
 }
 
 /**
- * Truncates text to a maximum length, adding an ellipsis if it was cut.
- * @param {String} text The text to truncate.
- * @param {Number} max The maximum length.
- * @returns {String} The possibly-truncated text.
- */
-function truncate(text: string, max: number) {
-  let result = text;
-  if (text.length > max) {
-    let end = max - 1;
-    // Avoid cutting an emoji (surrogate pair) in half
-    const last = text.charCodeAt(end - 1);
-    if (last >= 0xD800 && last <= 0xDBFF) {
-      end--;
-    }
-    result = `${text.slice(0, end)}…`;
-  }
-
-  // Handle partial code blocks
-  const fenceCount = result.split("```").length - 1;
-  const hasOpenCodeBlock = fenceCount % 2 === 1;
-  if (hasOpenCodeBlock) {
-    result += "\n```";
-  }
-
-  return result;
-}
-
-/**
  * Builds the "whose history do you want to view?" select menu shown after `/ss history`.
- * Options are Santa, Receiver, and every registered user the member has messaged via `/ss msg` -> User.
+ * Options are Santa, Receiver, every anonymous "<user>'s Santa" who messaged the member, and every
+ * registered user the member has messaged via `/ss msg` -> User.
  * @param {Client} client The Discord client.
  * @param {String} userId The Discord ID of the user viewing their history.
  * @param {String} [selected] The currently selected option value, if any.
@@ -529,6 +509,22 @@ async function buildHistorySelectRow(client: Client, userId: string, selected?: 
   const userIds = SantaManager.getMessagedTargets(userId)
     .filter((id) => id !== userId && SantaManager.isRegistered(id))
     .slice(0, HISTORY_MAX_USER_OPTIONS);
+
+  // Anonymous Santas who messaged you are identified only by their receiver, shown as "<receiver>'s Santa".
+  const anonymousReceiverIds = SantaManager.getAnonymousSantaReceivers(userId)
+    .slice(0, HISTORY_MAX_USER_OPTIONS - userIds.length);
+
+  const anonymousOptions = await Promise.all(anonymousReceiverIds.map(async (receiverId) => {
+    const receiver = await client.users.fetch(receiverId).catch(() => null);
+    const value = `${ANONYMOUS_SANTA_PREFIX}${receiverId}`;
+    return {
+      label: `${receiver?.displayName ?? "Unknown user"}'s Santa`,
+      description: "An anonymous Santa who messaged you.",
+      value,
+      emoji: { name: "🎅" },
+      default: value === selected,
+    };
+  }));
 
   const userOptions = await Promise.all(userIds.map(async (id) => {
     const user = await client.users.fetch(id).catch(() => null);
@@ -559,6 +555,7 @@ async function buildHistorySelectRow(client: Client, userId: string, selected?: 
         emoji: { name: "🎁" },
         default: selected === TARGETS.RECEIVER,
       },
+      ...anonymousOptions,
       ...userOptions,
     );
   return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
@@ -605,6 +602,10 @@ async function buildHistoryView(client: Client, userId: string, value: string, p
     otherId = SantaManager.getSanta(userId);
   } else if (value === TARGETS.RECEIVER) {
     otherId = SantaManager.getReceiver(userId);
+  } else if (value.startsWith(ANONYMOUS_SANTA_PREFIX)) {
+    // The value carries the Santa's receiver ID; map it back to the Santa who actually messaged us.
+    const receiverId = value.slice(ANONYMOUS_SANTA_PREFIX.length);
+    otherId = SantaManager.getAnonymousSantas(userId).find((santaId) => SantaManager.getReceiver(santaId) === receiverId);
   } else if (SantaManager.isRegistered(value) && value !== userId) {
     otherId = value;
   }
@@ -612,19 +613,31 @@ async function buildHistoryView(client: Client, userId: string, value: string, p
     return null;
   }
 
-  const other = await client.users.fetch(otherId).catch(() => null);
   const isSanta = value === TARGETS.SANTA;
   const isReceiver = value === TARGETS.RECEIVER;
+  const isAnonymousSanta = value.startsWith(ANONYMOUS_SANTA_PREFIX);
+
+  // Never fetch or show the identity of an anonymous Santa.
+  let other: User | null = null;
+  if (!isAnonymousSanta) {
+    other = await client.users.fetch(otherId).catch(() => null);
+  }
 
   let otherName = other?.displayName ?? "Unknown user";
   if (isSanta) {
     otherName = "Santa";
+  } else if (isAnonymousSanta) {
+    const anonymousReceiver = await client.users.fetch(value.slice(ANONYMOUS_SANTA_PREFIX.length)).catch(() => null);
+    otherName = `${anonymousReceiver?.displayName ?? "Unknown user"}'s Santa`;
   }
 
   let title = `✉️ Conversation with ${otherName}`;
   let color: number = SANTA_COLORS.USER;
   if (isSanta) {
     title = "🎅 Conversation with your Santa";
+    color = SANTA_COLORS.SANTA;
+  } else if (isAnonymousSanta) {
+    title = `🎅 Conversation with ${otherName}`;
     color = SANTA_COLORS.SANTA;
   } else if (isReceiver) {
     title = `🎁 Conversation with your receiver, ${otherName}`;
@@ -637,13 +650,15 @@ async function buildHistoryView(client: Client, userId: string, value: string, p
     thread = SantaManager.THREADS[TARGETS.SANTA];
   } else if (isReceiver) {
     thread = SantaManager.THREADS[TARGETS.RECEIVER];
+  } else if (isAnonymousSanta) {
+    thread = SantaManager.ANONYMOUS_SANTA_THREAD;
   }
 
   const history = SantaManager.getConversationHistory(userId, otherId, thread) as HistoryRow[];
   const selectRow = await buildHistorySelectRow(client, userId, value);
   const embed = new EmbedBuilder().setColor(color).setTitle(title);
 
-  if (isSanta) {
+  if (isSanta || isAnonymousSanta) {
     const avatar = SantaManager.getConfig().santa_avatar;
     if (avatar) {
       embed.setThumbnail(avatar);
@@ -653,7 +668,7 @@ async function buildHistoryView(client: Client, userId: string, value: string, p
   }
 
   if (!history.length) {
-    embed.setDescription("*No messages yet. Use `/ss msg` to start the conversation!*");
+    embed.setDescription("*No messages yet. Use `/ss msg` to send one.*");
     return { content: "", embeds: [embed], components: [selectRow] };
   }
 

@@ -2,6 +2,8 @@ import { DiscordAPIError, MessageFlags, RESTJSONErrorCodes, SlashCommandBuilder,
 import type { SlashCommand } from "../../../utils/types.ts";
 import SantaManager from "../../../utils/santa/santa-manager.ts";
 import SantaMessaging from "../../../utils/santa/santa-interactions.ts";
+import { chunkText } from "../../../utils/common.ts";
+import { DISCORD_LIMITS } from "../../../utils/santa/constants.ts";
 import logger from "../../../utils/logger.ts";
 
 export default {
@@ -255,10 +257,13 @@ export default {
       const reason = err instanceof DiscordAPIError && err.code === RESTJSONErrorCodes.CannotSendMessagesToThisUser
         ? `The ${label} has their DMs closed, so your message could not be delivered.`
         : `There was an issue sending your message to ${label}.`;
-      await interaction.followUp({
-        content: `[ERROR] ${reason}\nMessage: ${msg}`,
-        flags: MessageFlags.Ephemeral,
-      });
+      // The message can be up to Discord's max length on its own, so send this in pieces too.
+      for (const chunk of chunkText(`[ERROR] ${reason}\nMessage: ${msg}`, DISCORD_LIMITS.MESSAGE_LENGTH)) {
+        await interaction.followUp({
+          content: chunk,
+          flags: MessageFlags.Ephemeral,
+        });
+      }
     }
   },
   error: SantaMessaging.handleError,

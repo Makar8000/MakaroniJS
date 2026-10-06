@@ -219,6 +219,9 @@ const THREADS: Record<typeof TARGETS.SANTA | typeof TARGETS.RECEIVER | typeof TA
   [TARGETS.USER]: { outgoing: DIRECTIONS.SANTA_TO_USER, incoming: DIRECTIONS.USER_TO_SANTA },
 };
 
+// The USER thread seen from the view of the user getting messaged with `/ss msg` -> User
+const ANONYMOUS_SANTA_THREAD: Thread = { outgoing: THREADS[TARGETS.USER].incoming, incoming: THREADS[TARGETS.USER].outgoing };
+
 // Directions whose conversation history should be fetched for LLM context in transformMessage,
 // mapped to the thread that history is restricted to.
 const HISTORY_THREAD_FOR_DIRECTION: Record<string, Thread> = {
@@ -332,6 +335,44 @@ function getMessagedTargets(senderId: string): string[] {
     ORDER BY MAX(message_id) DESC
   `).all(senderId, DIRECTIONS.SANTA_TO_USER);
   return rows.map((row: { target_id: string }) => row.target_id);
+}
+
+/**
+ * Gets the distinct anonymous Santas who have messaged a user via `/ss msg` -> User, most recent first.
+ * @param {String} targetId
+ *  The Discord ID of the user who received the messages.
+ * @returns {String[]}
+ *  The Discord IDs of every santa who has messaged this user anonymously.
+ */
+function getAnonymousSantas(targetId: string): string[] {
+  const rows = db.prepare(`
+    SELECT sender_id
+    FROM message_history
+    WHERE target_id = ? AND direction = ?
+    GROUP BY sender_id
+    ORDER BY MAX(message_id) DESC
+  `).all(targetId, DIRECTIONS.SANTA_TO_USER);
+  return rows.map((row: { sender_id: string }) => row.sender_id);
+}
+
+/**
+ * Gets the receivers of the anonymous Santas who have messaged a user via `/ss msg` -> User, most recent first.
+ * This is how an anonymous Santa is identified in the UI ("<receiver>'s Santa"): the Santa's own ID is
+ * deliberately never returned so it can't leak.
+ * @param {String} targetId
+ *  The Discord ID of the user who received the messages.
+ * @returns {String[]}
+ *  The distinct Discord IDs of those Santas' receivers.
+ */
+function getAnonymousSantaReceivers(targetId: string): string[] {
+  const receiverIds: string[] = [];
+  for (const santaId of getAnonymousSantas(targetId)) {
+    const receiverId = getReceiver(santaId);
+    if (receiverId && !receiverIds.includes(receiverId)) {
+      receiverIds.push(receiverId);
+    }
+  }
+  return receiverIds;
 }
 
 /**
@@ -720,6 +761,7 @@ function close() {
 export default {
   DIRECTIONS_WITH_RP_MODE,
   THREADS,
+  ANONYMOUS_SANTA_THREAD,
   isRegistered,
   getParticipant,
   addSanta,
@@ -737,6 +779,8 @@ export default {
   logMessage,
   getConversationHistory,
   getMessagedTargets,
+  getAnonymousSantas,
+  getAnonymousSantaReceivers,
   start,
   resendPairs,
   messageAll,

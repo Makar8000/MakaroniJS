@@ -27,6 +27,12 @@ export const TARGETS = Object.freeze({
   USER: "USER",
 });
 
+/**
+ * Prefix of `/ss history` option values for an anonymous "<user>'s Santa" conversation, followed by the
+ * Discord ID of that Santa's receiver.
+ */
+export const ANONYMOUS_SANTA_PREFIX = "SANTAOF_";
+
 /** Roleplay styles a Santa message can be transformed with. */
 export const RP_MODES = Object.freeze({
   URIANGER: "URIANGER",

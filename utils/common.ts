@@ -31,6 +31,67 @@ export const getDiscordStr = (str: string, maxLen?: number) => {
 };
 
 /**
+ * Adjusts a cut position so it doesn't split an emoji (surrogate pair) in half.
+ * @param {String} text The text being cut.
+ * @param {Number} end The index to cut at (exclusive).
+ * @returns {Number} `end`, or `end - 1` if cutting there would separate a surrogate pair.
+ */
+const safeCutIndex = (text: string, end: number) => {
+  const last = text.charCodeAt(end - 1);
+  if (last >= 0xD800 && last <= 0xDBFF) {
+    return end - 1;
+  }
+  return end;
+};
+
+/**
+ * Splits text into pieces that each fit in a single Discord message
+ * @param {String} text The text to split.
+ * @param {Number} max The maximum length of each piece.
+ * @returns {String[]} The pieces, in order. A single piece if the text already fits.
+ */
+export const chunkText = (text: string, max: number) => {
+  const chunks: string[] = [];
+  let rest = text;
+  while (rest.length > max) {
+    let cut = Math.max(rest.lastIndexOf("\n", max), rest.lastIndexOf(" ", max));
+    let skip = 1;
+    if (cut <= 0) {
+      cut = safeCutIndex(rest, max);
+      skip = 0;
+    }
+    chunks.push(rest.slice(0, cut));
+    // The newline/space we broke on is dropped, since it only separated the two pieces.
+    rest = rest.slice(cut + skip);
+  }
+  chunks.push(rest);
+  return chunks;
+};
+
+/**
+ * Truncates text to a maximum length, adding an ellipsis if it was cut.
+ * Closes any code block the cut left open.
+ * @param {String} text The text to truncate.
+ * @param {Number} max The maximum length.
+ * @returns {String} The possibly-truncated text.
+ */
+export const truncate = (text: string, max: number) => {
+  let result = text;
+  if (text.length > max) {
+    result = `${text.slice(0, safeCutIndex(text, max - 1))}…`;
+  }
+
+  // Handle partial code blocks
+  const fenceCount = result.split("```").length - 1;
+  const hasOpenCodeBlock = fenceCount % 2 === 1;
+  if (hasOpenCodeBlock) {
+    result += "\n```";
+  }
+
+  return result;
+};
+
+/**
  * Reads a required environment variable, failing fast when it is missing.
  * @param {String} key
  *  The name of the environment variable.
@@ -71,6 +132,8 @@ export const getKeyvData = async ({ inputFile, namespace, key }: { inputFile: st
 
 export default {
   getDiscordStr,
+  chunkText,
+  truncate,
   getKeyvData,
   requireEnv,
 };
