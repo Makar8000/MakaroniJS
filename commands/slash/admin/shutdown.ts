@@ -3,6 +3,7 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import type { SlashCommand } from "../../../utils/types.ts";
 import scheduler from "node-schedule";
 import SantaManager from "../../../utils/santa/santa-manager.ts";
+import { close as closeDb } from "../../../utils/db/db.ts";
 import config from "../../../config.ts";
 import logger from "../../../utils/logger.ts";
 
@@ -21,6 +22,8 @@ export default {
       await scheduler.gracefulShutdown();
       // Close Secret Santa DB
       SantaManager.close();
+      // Close primary Makaroni DB
+      closeDb();
       // Discord shutdown
       await interaction.client.destroy();
       Deno.exit(0);

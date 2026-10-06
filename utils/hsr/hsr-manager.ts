@@ -1,9 +1,8 @@
 import { Buffer } from "node:buffer";
 import { join } from "@std/path";
 import scheduler from "node-schedule";
-import Keyv from "keyv";
-import { KeyvFile } from "keyv-file";
 import { AttachmentBuilder, type Client, Collection } from "discord.js";
+import { db } from "../db/db.ts";
 import logger from "../logger.ts";
 import { repoConfig } from "./config.ts";
 import { downloadJsonFile, getLatestCommit, getLatestCommitHash } from "./github-utils.ts";
@@ -27,12 +26,15 @@ type IncData = Record<string, IncType>;
 
 const jobs = new Collection<string, scheduler.Job>();
 
-const hsr = new Keyv({
-  namespace: "hsr",
-  store: new KeyvFile({
-    filename: join(import.meta.dirname!, "../../data/hsr.json"),
-  }),
-});
+/**
+ * Gets the IDs of all users subscribed to inclination updates.
+ * @returns
+ *  An array of Discord user IDs.
+ */
+function getSubscribers(): string[] {
+  return db.prepare("SELECT user_id FROM hsr_subscriptions").all().map((row: { user_id: string }) => row.user_id);
+}
+
 let curInclHash: string | undefined;
 let curInclData: IncData | undefined;
 
@@ -111,16 +113,13 @@ async function checkForInclinationTypes(client: Client) {
 }
 
 async function sendMessageToUsers(client: Client, output: string) {
-  const users = await hsr.get(repoConfig.KEYS.INCLINATION.userList);
-  for (const [userId, enabled] of Object.entries(users)) {
-    if (enabled) {
-      if (output.length > repoConfig.CHARACTER_LIMIT) {
-        await client.users.send(userId, {
-          files: [new AttachmentBuilder(Buffer.from(output), { name: "content.txt" })],
-        });
-      } else {
-        await client.users.send(userId, `\`\`\`${output}\`\`\``);
-      }
+  for (const userId of getSubscribers()) {
+    if (output.length > repoConfig.CHARACTER_LIMIT) {
+      await client.users.send(userId, {
+        files: [new AttachmentBuilder(Buffer.from(output), { name: "content.txt" })],
+      });
+    } else {
+      await client.users.send(userId, `\`\`\`${output}\`\`\``);
     }
   }
 }
@@ -143,12 +142,9 @@ async function scheduleInclinationCheck(client: Client, userId: string, isInitia
 
   // Check if this user is already subscribed
   if (!isInitial) {
-    const users = await hsr.get(repoConfig.KEYS.INCLINATION.userList);
-    if (users[userId]) {
+    const result = db.prepare("INSERT OR IGNORE INTO hsr_subscriptions (user_id) VALUES (?)").run(userId);
+    if (result.changes === 0) {
       return null;
-    } else {
-      users[userId] = true;
-      await hsr.set(repoConfig.KEYS.INCLINATION.userList, users);
     }
   }
 
@@ -177,18 +173,15 @@ async function scheduleInclinationCheck(client: Client, userId: string, isInitia
  * @returns
  *  True if cancelation was successful. False otherwise.
  */
-async function cancelInclinationCheck(userId: string) {
+function cancelInclinationCheck(userId: string) {
   if (jobs.has(repoConfig.KEYS.INCLINATION.jobName)) {
     // Remove user from subscriptions
-    const users = await hsr.get(repoConfig.KEYS.INCLINATION.userList);
-    if (users[userId]) {
-      delete users[userId];
-      await hsr.set(repoConfig.KEYS.INCLINATION.userList, users);
-    } else {
+    const result = db.prepare("DELETE FROM hsr_subscriptions WHERE user_id = ?").run(userId);
+    if (result.changes === 0) {
       return false;
     }
 
-    if (Object.values(users).filter((v) => v).length === 0) {
+    if (getSubscribers().length === 0) {
       return cancelJob(repoConfig.KEYS.INCLINATION.jobName);
     }
     return true;
@@ -275,16 +268,9 @@ function cancelJob(jobName: string) {
  */
 async function initJobs(client: Client) {
   // Inclination check
-  let inclinationCheckUsers = await hsr.get(repoConfig.KEYS.INCLINATION.userList);
-  if (!inclinationCheckUsers) {
-    await hsr.set(repoConfig.KEYS.INCLINATION.userList, {});
-    inclinationCheckUsers = {};
-  }
-  for (const [userId, enabled] of Object.entries(inclinationCheckUsers)) {
-    if (enabled) {
-      const successful = !!(await scheduleInclinationCheck(client, userId, true));
-      logger.info(`Scheduling HSR Inclination subscription for ${userId} was ${successful ? "" : "un"}successful.`);
-    }
+  for (const userId of getSubscribers()) {
+    const successful = !!(await scheduleInclinationCheck(client, userId, true));
+    logger.info(`Scheduling HSR Inclination subscription for ${userId} was ${successful ? "" : "un"}successful.`);
   }
 }
 

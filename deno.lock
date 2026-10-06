@@ -2,10 +2,7 @@
   "version": "5",
   "specifiers": {
     "jsr:@std/assert@^1.0.19": "1.0.19",
-    "jsr:@std/async@*": "1.5.1",
-    "jsr:@std/async@^1.5.1": "1.5.1",
     "jsr:@std/cli@^1.0.32": "1.0.32",
-    "jsr:@std/data-structures@^1.1.3": "1.1.3",
     "jsr:@std/fmt@^1.0.10": "1.0.10",
     "jsr:@std/internal@^1.0.12": "1.0.14",
     "jsr:@std/internal@^1.0.14": "1.0.14",
@@ -19,8 +16,6 @@
     "npm:@openrouter/sdk@^1.4.21": "1.4.21",
     "npm:better-sqlite3@^13.0.3": "13.0.3",
     "npm:discord.js@^14.27.0": "14.27.0",
-    "npm:keyv-file@^5.3.5": "5.3.5",
-    "npm:keyv@^5.6.0": "5.6.0",
     "npm:moment-timezone@~0.6.5": "0.6.5",
     "npm:moment@^2.31.0": "2.31.0",
     "npm:node-schedule@^2.1.1": "2.1.1",
@@ -34,21 +29,12 @@
         "jsr:@std/internal@^1.0.12"
       ]
     },
-    "@std/async@1.5.1": {
-      "integrity": "c82455dc70cab29a0adf3ac8075db934785bffdd3902af5afcf25d21a74cfd86",
-      "dependencies": [
-        "jsr:@std/data-structures"
-      ]
-    },
     "@std/cli@1.0.32": {
       "integrity": "188b3a100d6202d64e3f5bd3d799c7fa4f6d77f92cc65eb7f641c1fa0aa92a66",
       "dependencies": [
         "jsr:@std/fmt",
         "jsr:@std/internal@^1.0.14"
       ]
-    },
-    "@std/data-structures@1.1.3": {
-      "integrity": "a5ec67199e79ee5b29123474d93fa9a47701ec08a4ef3bd1b623a36476306c5b"
     },
     "@std/fmt@1.0.10": {
       "integrity": "90dfba288802ac6de82fb31d0917eb9e4450b9925b954d5e51fc29ac07419db5"
@@ -97,7 +83,7 @@
         "discord-api-types",
         "fast-deep-equal",
         "ts-mixer",
-        "tslib@2.8.1"
+        "tslib"
       ]
     },
     "@discordjs/collection@1.5.3": {
@@ -122,7 +108,7 @@
         "@vladfrangu/async_event_emitter",
         "discord-api-types",
         "magic-bytes.js",
-        "tslib@2.8.1",
+        "tslib",
         "undici@6.29.0"
       ]
     },
@@ -142,7 +128,7 @@
         "@types/ws",
         "@vladfrangu/async_event_emitter",
         "discord-api-types",
-        "tslib@2.8.1",
+        "tslib",
         "ws"
       ]
     },
@@ -568,7 +554,7 @@
         "fast-deep-equal",
         "lodash.snakecase",
         "magic-bytes.js",
-        "tslib@2.8.1",
+        "tslib",
         "undici@6.29.0"
       ]
     },
@@ -698,7 +684,7 @@
       "integrity": "sha512-kxbW6CCsiEAVdBYPont/6ZVOa47Pyfv5ldYFIvj8wmOx9uQOZ4c8wdR0jEf2pE6DeVuIAfmolm+91bYne6/3uA==",
       "dependencies": [
         "adm-zip",
-        "tslib@2.8.1"
+        "tslib"
       ]
     },
     "get-intrinsic@1.3.0": {
@@ -748,7 +734,7 @@
         "mimic-response@4.0.0",
         "ow@1.1.1",
         "quick-lru@7.3.0",
-        "tslib@2.8.1"
+        "tslib"
       ]
     },
     "got@11.8.6": {
@@ -805,7 +791,7 @@
         "browserslist",
         "generative-bayesian-network",
         "ow@0.28.2",
-        "tslib@2.8.1"
+        "tslib"
       ]
     },
     "help-me@5.0.0": {
@@ -868,13 +854,6 @@
     },
     "json-with-bigint@3.5.12": {
       "integrity": "sha512-uwbF/wSSuOgC7qqlq27Xp5B6a2MHVug3t0idZdTqu0JnlFvgJuH7ju+KAk/J06C7GfhoYy2gnb9wz2INqcne7w=="
-    },
-    "keyv-file@5.3.5": {
-      "integrity": "sha512-0JFTTi55d1HdhIrSOnPngUw0fyHLn3BHqoLJ8TyGKM/fQfuZsz8HkcFxpl6YzU2mj1ZfRF/6BXlSqOpyfXYAmw==",
-      "dependencies": [
-        "@keyv/serialize",
-        "tslib@1.14.1"
-      ]
     },
     "keyv@4.5.4": {
       "integrity": "sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==",
@@ -1165,9 +1144,6 @@
     "ts-mixer@6.0.4": {
       "integrity": "sha512-ufKpbmrugz5Aou4wcr5Wc1UUFWOLhq+Fm6qa6P0w0K5Qw2yhaUoiWszhCVuNQyNwrlGiscHOmqYoAox1PtvgjA=="
     },
-    "tslib@1.14.1": {
-      "integrity": "sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg=="
-    },
     "tslib@2.8.1": {
       "integrity": "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="
     },
@@ -1234,7 +1210,6 @@
   "workspace": {
     "dependencies": [
       "jsr:@std/assert@^1.0.19",
-      "jsr:@std/async@^1.5.1",
       "jsr:@std/cli@^1.0.32",
       "jsr:@std/jsonc@^1.0.3",
       "jsr:@std/path@^1.1.6",
@@ -1245,8 +1220,6 @@
       "npm:@openrouter/sdk@^1.4.21",
       "npm:better-sqlite3@^13.0.3",
       "npm:discord.js@^14.27.0",
-      "npm:keyv-file@^5.3.5",
-      "npm:keyv@^5.6.0",
       "npm:moment-timezone@~0.6.5",
       "npm:moment@^2.31.0",
       "npm:node-schedule@^2.1.1",

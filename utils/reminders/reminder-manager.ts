@@ -1,33 +1,58 @@
-import { join } from "@std/path";
 import scheduler from "node-schedule";
 import moment, { type DurationInputArg1, type DurationInputArg2 } from "moment";
-import { Semaphore } from "@std/async/unstable-semaphore";
-import Keyv from "keyv";
-import { KeyvFile } from "keyv-file";
 import { type Client, Collection } from "discord.js";
+import { db } from "../db/db.ts";
 import logger from "../logger.ts";
 import type { Reminder } from "../types.ts";
 const jobs = new Collection<string, scheduler.Job>();
 
-const keysMutex = new Semaphore(1);
-const reminders = new Keyv({
-  namespace: "reminders",
-  store: new KeyvFile({
-    filename: join(import.meta.dirname!, "../../data/reminders.json"),
-  }),
-});
+/** A row of the reminders table. */
+interface ReminderRow {
+  id: string;
+  unix_ts: number;
+  author_id: string;
+  channel_id: string | null;
+  mention: string | null;
+  message: string;
+}
 
 /**
- * Atomically updates the "keys" index of stored reminders.
- * All reads and writes of the index must go through here so concurrent updates can't overwrite each other.
- * @param {Function} update
- *  Callback which mutates the index in place.
+ * Converts a database row into a Reminder.
+ * @param {Object} row
+ *  The row from the reminders table.
+ * @returns
+ *  The reminder.
  */
-async function updateKeys(update: (keys: Record<string, boolean>) => void) {
-  using _permit = await keysMutex.acquire();
-  const keys: Record<string, boolean> = (await reminders.get("keys")) ?? {};
-  update(keys);
-  await reminders.set("keys", keys);
+function toReminder(row: ReminderRow): Reminder {
+  return {
+    id: row.id,
+    unixTs: row.unix_ts,
+    authorId: row.author_id,
+    channelId: row.channel_id,
+    mention: row.mention ?? undefined,
+    message: row.message,
+  };
+}
+
+/**
+ * Gets a stored reminder.
+ * @param {String} reminderId
+ *  The reminder ID to look up.
+ * @returns
+ *  The reminder, or undefined if it doesn't exist.
+ */
+function getReminder(reminderId: string): Reminder | undefined {
+  const row: ReminderRow | undefined = db.prepare("SELECT * FROM reminders WHERE id = ?").get(reminderId);
+  return row && toReminder(row);
+}
+
+/**
+ * Deletes a stored reminder.
+ * @param {String} reminderId
+ *  The reminder ID to delete.
+ */
+function deleteReminder(reminderId: string) {
+  db.prepare("DELETE FROM reminders WHERE id = ?").run(reminderId);
 }
 
 /**
@@ -39,15 +64,19 @@ async function updateKeys(update: (keys: Record<string, boolean>) => void) {
  * @returns
  *  A reference to the scheduled job.
  */
-async function scheduleReminder(client: Client, reminder: Reminder) {
+function scheduleReminder(client: Client, reminder: Reminder) {
   if (!reminder?.id || !client) {
     return null;
   }
 
-  await reminders.set(reminder.id, reminder);
-  await updateKeys((keys) => {
-    keys[reminder.id] = true;
-  });
+  db.prepare("INSERT OR REPLACE INTO reminders (id, unix_ts, author_id, channel_id, mention, message) VALUES (?, ?, ?, ?, ?, ?)").run(
+    reminder.id,
+    reminder.unixTs,
+    reminder.authorId,
+    reminder.channelId ?? null,
+    reminder.mention ?? null,
+    reminder.message,
+  );
   return startJob(client, reminder);
 }
 
@@ -58,18 +87,9 @@ async function scheduleReminder(client: Client, reminder: Reminder) {
  * @returns
  *  An array of reminders.
  */
-async function getReminders(userId: string) {
-  const ret: Reminder[] = [];
-  const keys = await reminders.get("keys");
-  if (keys && typeof keys === "object") {
-    for (const key of Object.keys(keys)) {
-      const rem = await reminders.get(key);
-      if (rem.authorId === userId) {
-        ret.push(rem);
-      }
-    }
-  }
-  return ret;
+function getReminders(userId: string): Reminder[] {
+  const rows: ReminderRow[] = db.prepare("SELECT * FROM reminders WHERE author_id = ? ORDER BY unix_ts").all(userId);
+  return rows.map(toReminder);
 }
 
 /**
@@ -81,14 +101,12 @@ async function getReminders(userId: string) {
  * @returns
  *  True if cancelation was successful. False otherwise.
  */
-async function cancelReminder(reminderId: string, userId: string) {
-  const reminder = await reminders.get(reminderId);
+function cancelReminder(reminderId: string, userId: string) {
+  const reminder = getReminder(reminderId);
   if (reminder && jobs.has(reminder.id) && reminder.authorId === userId) {
     jobs.get(reminder.id)!.cancel();
-    await updateKeys((keys) => {
-      delete keys[reminder.id];
-    });
-    await reminders.delete(reminder.id);
+    jobs.delete(reminder.id);
+    deleteReminder(reminder.id);
     return true;
   }
   return false;
@@ -144,10 +162,8 @@ async function sendReminder(client: Client, reminder: Reminder) {
       await client.users.send(reminder.authorId, message);
     }
 
-    await updateKeys((keys) => {
-      delete keys[reminder.id];
-    });
-    await reminders.delete(reminder.id);
+    jobs.delete(reminder.id);
+    deleteReminder(reminder.id);
 
     return true;
   } catch (error) {
@@ -162,16 +178,13 @@ async function sendReminder(client: Client, reminder: Reminder) {
  * @param {Client} client
  *  The discord.js client.
  */
-async function initJobs(client: Client) {
-  const keys = await reminders.get("keys");
-  if (!keys) {
-    return;
-  }
+function initJobs(client: Client) {
+  const rows: ReminderRow[] = db.prepare("SELECT * FROM reminders").all();
 
   const delay = { amount: 5 as DurationInputArg1, unit: "seconds" as DurationInputArg2 };
   const curTime = moment().add(delay.amount, delay.unit).unix();
-  for (const key of Object.keys(keys)) {
-    const rem = await reminders.get(key);
+  for (const row of rows) {
+    const rem = toReminder(row);
     if (rem.unixTs < curTime) {
       rem.unixTs = curTime;
       logger.warn(`Reminder ${rem.id} is in the past. Firing in ${delay.amount} ${delay.unit}`);

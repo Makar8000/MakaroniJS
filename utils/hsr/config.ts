@@ -16,7 +16,6 @@ export const repoConfig = {
   SCHEDULE: "*/3 * * * *",
   KEYS: {
     INCLINATION: {
-      userList: "inclinationCheckUsers",
       jobName: "inclinationTypes",
     },
   },
