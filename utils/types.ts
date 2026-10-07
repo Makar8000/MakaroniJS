@@ -1,5 +1,4 @@
 import type { IAnimeInfo, ITitle } from "@consumet/extensions";
-import type { Moment } from "moment";
 import type {
   ButtonInteraction,
   ChatInputCommandInteraction,
@@ -64,7 +63,8 @@ export interface Reminder {
 /** Consumet anime info, plus the fields this bot attaches while building a W2G room. */
 export type AnimeInfo = IAnimeInfo & {
   title: ITitle;
-  expires?: Moment;
+  /** Expiry as epoch milliseconds. */
+  expires?: number;
   /** External ids (e.g. `mal`, `anilist`) supplied by the Anilist meta provider. */
   mappings?: Record<string, string | number>;
   videoUrl?: string;

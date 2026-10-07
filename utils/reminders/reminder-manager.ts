@@ -1,5 +1,4 @@
 import scheduler from "node-schedule";
-import moment, { type DurationInputArg1, type DurationInputArg2 } from "moment";
 import { type Client, Collection } from "discord.js";
 import { db } from "../db/db.ts";
 import logger from "../logger.ts";
@@ -124,7 +123,7 @@ function cancelReminder(reminderId: string, userId: string) {
 function startJob(client: Client, reminder: Reminder) {
   try {
     logger.info(`Scheduling job ${reminder.id}`);
-    const date = moment.unix(reminder.unixTs).toDate();
+    const date = new Date(reminder.unixTs * 1000);
     const job = scheduler.scheduleJob(date, sendReminder.bind(null, client, reminder));
     if (job) {
       jobs.set(reminder.id, job);
@@ -181,13 +180,13 @@ async function sendReminder(client: Client, reminder: Reminder) {
 function initJobs(client: Client) {
   const rows: ReminderRow[] = db.prepare("SELECT * FROM reminders").all();
 
-  const delay = { amount: 5 as DurationInputArg1, unit: "seconds" as DurationInputArg2 };
-  const curTime = moment().add(delay.amount, delay.unit).unix();
+  const delaySeconds = 5;
+  const curTime = Math.floor(Date.now() / 1000) + delaySeconds;
   for (const row of rows) {
     const rem = toReminder(row);
     if (rem.unixTs < curTime) {
       rem.unixTs = curTime;
-      logger.warn(`Reminder ${rem.id} is in the past. Firing in ${delay.amount} ${delay.unit}`);
+      logger.warn(`Reminder ${rem.id} is in the past. Firing in ${delaySeconds} seconds`);
     }
 
     if (!startJob(client, rem)) {

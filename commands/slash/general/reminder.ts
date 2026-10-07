@@ -1,7 +1,6 @@
 import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
 import type { SlashCommand } from "../../../utils/types.ts";
-import moment from "moment";
 import config from "../../../utils/reminders/config.ts";
 import ReminderManager from "../../../utils/reminders/reminder-manager.ts";
 import logger from "../../../utils/logger.ts";
@@ -56,7 +55,7 @@ export default {
 
     if (subcommand === "create") {
       const time = interaction.options.getInteger("time", true);
-      if (time < moment().unix() || `${time}`.length !== 10) {
+      if (time < Math.floor(Date.now() / 1000) || `${time}`.length !== 10) {
         await interaction.followUp({
           content: config.invalidTime(time),
           flags: MessageFlags.Ephemeral,

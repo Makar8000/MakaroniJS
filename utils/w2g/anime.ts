@@ -1,7 +1,6 @@
 import { Collection } from "discord.js";
 import { ANIME, type IAnimeResult, type ISearch, META } from "@consumet/extensions";
 import type { AnimeParser } from "@consumet/extensions/dist/models";
-import moment from "moment";
 import logger from "../logger.ts";
 import { requireEnv } from "../common.ts";
 import type { AnimeInfo } from "../types.ts";
@@ -9,6 +8,8 @@ import type { AnimeInfo } from "../types.ts";
 const provider: AnimeParser = new ANIME[requireEnv("ANIME_PROVIDER") as keyof typeof ANIME]();
 const consumet = new META.Anilist(provider);
 const infoCache = new Collection<string, AnimeInfo>();
+// 6 hour cache
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 /**
  * Search for an anime using the Consumet API.
@@ -42,8 +43,8 @@ async function search(query: string) {
  */
 async function fetchAnimeInfo(id: string, originalQuery: string, episodeNumber: number): Promise<AnimeInfo | null> {
   try {
-    const time = moment();
-    infoCache.sweep((a) => time.isAfter(a.expires));
+    const time = Date.now();
+    infoCache.sweep((a) => time > (a.expires ?? Infinity));
 
     const cached = infoCache.get(id);
     let data: AnimeInfo = cached?.episodes?.find((e) => e.number === episodeNumber) ? cached : await consumet.fetchAnimeInfo(id);
@@ -61,7 +62,7 @@ async function fetchAnimeInfo(id: string, originalQuery: string, episodeNumber: 
     }
     if ((data.episodes?.length ?? 0) > 0) {
       if (!data.expires) {
-        infoCache.set(id, { ...data, expires: moment().add(6, "hours") });
+        infoCache.set(id, { ...data, expires: Date.now() + CACHE_TTL_MS });
       }
       return data;
     }

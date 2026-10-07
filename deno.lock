@@ -16,8 +16,6 @@
     "npm:@openrouter/sdk@^1.4.21": "1.4.21",
     "npm:better-sqlite3@^13.0.3": "13.0.3",
     "npm:discord.js@^14.27.0": "14.27.0",
-    "npm:moment-timezone@~0.6.5": "0.6.5",
-    "npm:moment@^2.31.0": "2.31.0",
     "npm:node-schedule@^2.1.1": "2.1.1",
     "npm:pino-pretty@^13.2.0": "13.2.0",
     "npm:pino@^10.4.0": "10.4.0"
@@ -916,15 +914,6 @@
     "minimist@1.2.8": {
       "integrity": "sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA=="
     },
-    "moment-timezone@0.6.5": {
-      "integrity": "sha512-KKzZAxGv2Qx4cnk6eSlvf4C+DLFW52vmMY5MN7UARY7GONbozkutylQG3DrrtmLCTXdQ5XZrqao9cI16bLFzXA==",
-      "dependencies": [
-        "moment"
-      ]
-    },
-    "moment@2.31.0": {
-      "integrity": "sha512-0acOTfMiWOheYS4eoWb80yYMb/JLvVv9SHbs2PehaDzfUG0Bw855SKyk0IKTnPGa5+U2bmi3W68l1+sGLX/pvw=="
-    },
     "ms@2.1.3": {
       "integrity": "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA=="
     },
@@ -1220,8 +1209,6 @@
       "npm:@openrouter/sdk@^1.4.21",
       "npm:better-sqlite3@^13.0.3",
       "npm:discord.js@^14.27.0",
-      "npm:moment-timezone@~0.6.5",
-      "npm:moment@^2.31.0",
       "npm:node-schedule@^2.1.1",
       "npm:pino-pretty@^13.2.0",
       "npm:pino@^10.4.0"

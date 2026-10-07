@@ -1,7 +1,13 @@
-import { type APIEmbedField, EmbedBuilder, type User } from "discord.js";
-import moment from "moment";
+import { type APIEmbedField, EmbedBuilder, time, TimestampStyles, type User } from "discord.js";
 import { getDiscordStr } from "../common.ts";
 import type { AnimeInfo } from "../types.ts";
+
+/** Formats a fuzzy date as a Discord long-date timestamp, or "???" if any part is missing. */
+const formatFuzzyDate = (date?: { year?: number | null; month?: number | null; day?: number | null }) => {
+  if (typeof date?.year !== "number" || typeof date.month !== "number" || typeof date.day !== "number") return "???";
+  // Noon UTC keeps the calendar day the same for viewers in every timezone.
+  return time(new Date(Date.UTC(date.year, date.month - 1, date.day, 12)), TimestampStyles.LongDate);
+};
 
 const embedOptions = Object.freeze({
   color: 0xFBCD3B,
@@ -88,11 +94,9 @@ const createGenericAnime = (animeInfo: AnimeInfo, user: User, msg: string) => {
       });
     }
     if (typeof animeInfo.startDate?.day === "number") {
-      const start = moment(`${animeInfo.startDate?.year}-${animeInfo.startDate?.month}-${animeInfo.startDate?.day}`, "YYYY-M-D");
-      const end = moment(`${animeInfo.endDate?.year}-${animeInfo.endDate?.month}-${animeInfo.endDate?.day}`, "YYYY-M-D");
       fields.push({
         name: embedOptionsAnime.fieldAired,
-        value: `${start.isValid() ? start.format("MMM Mo, YYYY") : "???"} - ${end.isValid() ? end.format("MMM Mo, YYYY") : "???"}`,
+        value: `${formatFuzzyDate(animeInfo.startDate)} - ${formatFuzzyDate(animeInfo.endDate)}`,
         inline: true,
       });
     }
