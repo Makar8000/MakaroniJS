@@ -1,12 +1,14 @@
 import { Buffer } from "node:buffer";
-import { join } from "@std/path";
-import scheduler from "node-schedule";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { AttachmentBuilder, type Client, Collection } from "discord.js";
-import { db } from "../db/db.ts";
+import scheduler from "node-schedule";
+import { db, prepare } from "../db/db.ts";
 import logger from "../logger.ts";
 import { repoConfig } from "./config.ts";
 import { downloadJsonFile, getLatestCommit, getLatestCommitHash } from "./github-utils.ts";
-const incDataDefaultPath = join(import.meta.dirname!, "inclination-types.json");
+
+const incDataDefaultPath = join(import.meta.dirname, "inclination-types.json");
 
 /** A dialogue option for an inclination type. */
 interface IncText {
@@ -32,9 +34,12 @@ const jobs = new Collection<string, scheduler.Job>();
  *  An array of Discord user IDs.
  */
 function getSubscribers(): string[] {
-  return db.prepare("SELECT user_id FROM hsr_subscriptions").all().map((row: { user_id: string }) => row.user_id);
+  return prepare(db, "SELECT user_id FROM hsr_subscriptions")
+    .all()
+    .map((row: { user_id: string }) => row.user_id);
 }
 
+let checkInProgress = false;
 let curInclHash: string | undefined;
 let curInclData: IncData | undefined;
 
@@ -46,12 +51,12 @@ let curInclData: IncData | undefined;
  *  The inclination data.
  */
 async function loadIncData(sha?: string): Promise<IncData> {
-  const incData: IncData = JSON.parse(Deno.readTextFileSync(incDataDefaultPath));
+  const incData: IncData = JSON.parse(readFileSync(incDataDefaultPath, "utf8"));
   const incText = await downloadJsonFile(repoConfig.FILES.InclinationText, sha);
   const talkSentence = await downloadJsonFile(repoConfig.FILES.TalkSentenceConfig, sha);
   const textMap = await downloadJsonFile(repoConfig.FILES.TextMapEN, sha);
 
-  Object.keys(incText).map((key) => {
+  Object.keys(incText).forEach((key) => {
     incText[key].InclinationTypeList.forEach((type: number) => {
       if (incData[`${type}`]) {
         const id = incText[key].TalkSentenceID;
@@ -70,9 +75,11 @@ async function loadIncData(sha?: string): Promise<IncData> {
  *  The discord.js client.
  */
 async function checkForInclinationTypes(client: Client) {
-  if (jobs.get(repoConfig.KEYS.INCLINATION.jobName)?.running) {
+  // Skip this tick if the previous check is still running.
+  if (checkInProgress) {
     return;
   }
+  checkInProgress = true;
 
   try {
     const newHash = await getLatestCommitHash();
@@ -81,15 +88,17 @@ async function checkForInclinationTypes(client: Client) {
       const newData = await loadIncData();
       const outputList: string[] = [];
       let atLeastOne = false;
-      Object.keys(newData).map((type) => {
-        newData[type].textMapList.map((newD) => {
+      Object.keys(newData).forEach((type) => {
+        newData[type].textMapList.forEach((newD) => {
           if (!curInclData?.[type].textMapList.find((oldD) => oldD.id === newD.id)) {
             newData[type].newTextMapList.push(newD);
           }
         });
 
         if (newData[type].newTextMapList.length) {
-          outputList.push(`### ${newData[type].name}${newData[type].newTextMapList.map(({ text }) => `\n- ${text}`).join("")}`);
+          outputList.push(
+            `### ${newData[type].name}${newData[type].newTextMapList.map(({ text }) => `\n- ${text}`).join("")}`,
+          );
           atLeastOne = true;
         } else {
           outputList.push(`### ${newData[type].name}\n_no new dialogue options_`);
@@ -109,6 +118,8 @@ async function checkForInclinationTypes(client: Client) {
     }
   } catch (error) {
     logger.error({ err: error }, "HSR inclination check failed:");
+  } finally {
+    checkInProgress = false;
   }
 }
 
@@ -142,7 +153,7 @@ async function scheduleInclinationCheck(client: Client, userId: string, isInitia
 
   // Check if this user is already subscribed
   if (!isInitial) {
-    const result = db.prepare("INSERT OR IGNORE INTO hsr_subscriptions (user_id) VALUES (?)").run(userId);
+    const result = prepare(db, "INSERT OR IGNORE INTO hsr_subscriptions (user_id) VALUES (?)").run(userId);
     if (result.changes === 0) {
       return null;
     }
@@ -163,7 +174,11 @@ async function scheduleInclinationCheck(client: Client, userId: string, isInitia
     return job;
   }
 
-  return startJob(repoConfig.KEYS.INCLINATION.jobName, repoConfig.SCHEDULE, checkForInclinationTypes.bind(null, client));
+  return startJob(
+    repoConfig.KEYS.INCLINATION.jobName,
+    repoConfig.SCHEDULE,
+    checkForInclinationTypes.bind(null, client),
+  );
 }
 
 /**
@@ -176,7 +191,7 @@ async function scheduleInclinationCheck(client: Client, userId: string, isInitia
 function cancelInclinationCheck(userId: string) {
   if (jobs.has(repoConfig.KEYS.INCLINATION.jobName)) {
     // Remove user from subscriptions
-    const result = db.prepare("DELETE FROM hsr_subscriptions WHERE user_id = ?").run(userId);
+    const result = prepare(db, "DELETE FROM hsr_subscriptions WHERE user_id = ?").run(userId);
     if (result.changes === 0) {
       return false;
     }
@@ -201,7 +216,6 @@ function cancelInclinationCheck(userId: string) {
  * @returns
  *  A reference to the scheduled job.
  */
-// deno-lint-ignore require-await
 async function scheduleRoleCheck(_client: Client, _userId: string, _isInitial = false) {
   // TODO: Implement
   return null;
@@ -214,7 +228,6 @@ async function scheduleRoleCheck(_client: Client, _userId: string, _isInitial = 
  * @returns
  *  True if cancelation was successful. False otherwise.
  */
-// deno-lint-ignore require-await
 async function cancelRoleCheck(_userId: string) {
   // TODO: Implement
   return null;

@@ -7,7 +7,7 @@ const createSuccess = (reminder: Reminder, user: User) => {
     fields.push({ name: "Mention", value: `${reminder.mention}`, inline: true });
   }
   const embed = new EmbedBuilder()
-    .setColor(0x57F287)
+    .setColor(0x57f287)
     .setAuthor({
       name: user.displayName,
       iconURL: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`,
@@ -30,7 +30,7 @@ const listSuccess = (reminders: Reminder[], user: User) => {
     fields.push({ name: "Message", value: `${rem.message}`, inline: false });
   }
   const embed = new EmbedBuilder()
-    .setColor(0x7289DA)
+    .setColor(0x7289da)
     .setAuthor({
       name: user.displayName,
       iconURL: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`,

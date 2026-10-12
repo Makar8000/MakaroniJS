@@ -1,35 +1,23 @@
 import { MessageFlags, SlashCommandBuilder } from "discord.js";
-import type { SlashCommand } from "../../../utils/types.ts";
-import SantaManager from "../../../utils/santa/santa-manager.ts";
-import SantaMessaging from "../../../utils/santa/santa-interactions.ts";
-import { DISCORD_LIMITS } from "../../../utils/santa/constants.ts";
 import config from "../../../config.ts";
 import logger from "../../../utils/logger.ts";
+import { DISCORD_LIMITS } from "../../../utils/santa/constants.ts";
+import SantaMessaging from "../../../utils/santa/santa-interactions.ts";
+import SantaManager from "../../../utils/santa/santa-manager.ts";
+import type { SlashCommand } from "../../../utils/types.ts";
 
 export default {
   data: new SlashCommandBuilder()
     .setName("ss-admin")
     .setDescription("Secret Santa admin commands.")
     .setDefaultMemberPermissions(0)
+    .addSubcommand((subcommand) => subcommand.setName("start").setDescription("Starts the Secret Santa session."))
+    .addSubcommand((subcommand) => subcommand.setName("reset").setDescription("Resets Secret Santa."))
     .addSubcommand((subcommand) =>
-      subcommand
-        .setName("start")
-        .setDescription("Starts the Secret Santa session.")
+      subcommand.setName("list").setDescription("Gets a list of users who are registered."),
     )
     .addSubcommand((subcommand) =>
-      subcommand
-        .setName("reset")
-        .setDescription("Resets Secret Santa.")
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("list")
-        .setDescription("Gets a list of users who are registered.")
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("blacklist")
-        .setDescription("Gets a list of banned Secret Santa pairs.")
+      subcommand.setName("blacklist").setDescription("Gets a list of banned Secret Santa pairs."),
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -39,8 +27,8 @@ export default {
           option
             .setName("public")
             .setDescription("Whether or not it should be posted publically (non-ephemeral). Default false.")
-            .setRequired(false)
-        )
+            .setRequired(false),
+        ),
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -50,8 +38,8 @@ export default {
           option
             .setName("public")
             .setDescription("Whether or not it should be posted publically (non-ephemeral). Default false.")
-            .setRequired(false)
-        )
+            .setRequired(false),
+        ),
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -62,30 +50,22 @@ export default {
             .setName("message")
             .setDescription("The message to send.")
             .setMaxLength(DISCORD_LIMITS.MESSAGE_LENGTH)
-            .setRequired(true)
-        )
+            .setRequired(true),
+        ),
     )
     .addSubcommand((subcommand) =>
-      subcommand
-        .setName("resend-pairs")
-        .setDescription("Re-sends every santa the receiver they were selected for.")
+      subcommand.setName("resend-pairs").setDescription("Re-sends every santa the receiver they were selected for."),
     )
     .addSubcommand((subcommand) =>
       subcommand
         .setName("config")
         .setDescription("Updates the value of an existing Secret Santa config key.")
         .addStringOption((option) =>
-          option
-            .setName("key")
-            .setDescription("The config key to update.")
-            .setRequired(true)
+          option.setName("key").setDescription("The config key to update.").setRequired(true),
         )
         .addStringOption((option) =>
-          option
-            .setName("value")
-            .setDescription("The new value to set for this key.")
-            .setRequired(true)
-        )
+          option.setName("value").setDescription("The new value to set for this key.").setRequired(true),
+        ),
     ),
   async execute(interaction) {
     const client = interaction.client;
@@ -155,10 +135,9 @@ export default {
       });
     } else if (subcommand === "blacklist") {
       const blacklists = SantaManager.getBlacklists();
-      const msg = Object.entries(blacklists).reduce(
-        (m, [santa, recList]) => `${m}\n<@${santa}>  \u2192  ${recList.map((r) => `<@${r}>`).join("  ")}`,
-        "",
-      ).trim();
+      const msg = Object.entries(blacklists)
+        .reduce((m, [santa, recList]) => `${m}\n<@${santa}>  \u2192  ${recList.map((r) => `<@${r}>`).join("  ")}`, "")
+        .trim();
       await interaction.reply({
         content: `Santa \u2192 Banned Receiver\n${msg}`,
         flags: MessageFlags.Ephemeral,
@@ -166,7 +145,8 @@ export default {
     } else if (subcommand === "selectedlist") {
       if (SantaManager.started()) {
         const selectedPairs = SantaManager.getSelectedPairs();
-        const msg = Object.entries(selectedPairs).reduce((m, [santa, rec]) => `${m}\n\uD83C\uDF85 <@${santa}> \u27F6 \uD83C\uDF81 <@${rec}>`, "")
+        const msg = Object.entries(selectedPairs)
+          .reduce((m, [santa, rec]) => `${m}\n\uD83C\uDF85 <@${santa}> \u27F6 \uD83C\uDF81 <@${rec}>`, "")
           .trim();
         const isEphemeral = !interaction.options.getBoolean("public");
         await interaction.reply({
@@ -200,13 +180,15 @@ export default {
     } else if (subcommand === "giftlist") {
       if (SantaManager.started()) {
         const giftTrackingList = SantaManager.getGiftTrackingList();
-        const msg = giftTrackingList.reduce(
-          (m, item) =>
-            `${m}\n<@${item.receiver_id}>'s Santa Gift Status: **${
-              SantaMessaging.GIFT_STATUS_LABEL[item.gift_status]
-            }** (<t:${item.gift_status_timestamp}:F>)`,
-          "",
-        ).trim();
+        const msg = giftTrackingList
+          .reduce(
+            (m, item) =>
+              `${m}\n<@${item.receiver_id}>'s Santa Gift Status: **${
+                SantaMessaging.GIFT_STATUS_LABEL[item.gift_status]
+              }** (<t:${item.gift_status_timestamp}:F>)`,
+            "",
+          )
+          .trim();
         const isEphemeral = !interaction.options.getBoolean("public");
         await interaction.reply({
           content: msg || "No tracking records found.",

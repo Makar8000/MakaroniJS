@@ -17,10 +17,18 @@ import {
   TextInputStyle,
   type User,
 } from "discord.js";
-import SantaManager from "./santa-manager.ts";
-import logger from "../logger.ts";
 import { chunkText, truncate } from "../common.ts";
-import { ANONYMOUS_SANTA_PREFIX, DIRECTIONS, DISCORD_LIMITS, RP_MODES, SANTA_COLORS, SANTA_LIMITS, TARGETS } from "./constants.ts";
+import logger from "../logger.ts";
+import {
+  ANONYMOUS_SANTA_PREFIX,
+  DIRECTIONS,
+  DISCORD_LIMITS,
+  RP_MODES,
+  SANTA_COLORS,
+  SANTA_LIMITS,
+  TARGETS,
+} from "./constants.ts";
+import SantaManager from "./santa-manager.ts";
 
 // Namespace prefix for customIds built/parsed by this module, matching the `/ss` command name.
 const COMMAND_NAME = "ss";
@@ -91,7 +99,12 @@ const RP_MODE_CHOICES = [
  * @param {String} explicitTargetId The Discord ID of the target user (override)
  * @returns The resolved User or TextChannel to send the message to.
  */
-async function resolveDestination(client: Client, direction: string, senderId: string, explicitTargetId?: string): Promise<User | SendableChannels> {
+async function resolveDestination(
+  client: Client,
+  direction: string,
+  senderId: string,
+  explicitTargetId?: string,
+): Promise<User | SendableChannels> {
   let destination: User | SendableChannels | null | undefined;
   if (DIRECTIONS_WITH_EXPLICIT_TARGET.has(direction)) {
     destination = await client.users.fetch(explicitTargetId!);
@@ -145,25 +158,28 @@ function buildReplyRow(direction: string, senderId: string) {
 function buildTextLabel(
   label: string,
   customId: string,
-  { style = TextInputStyle.Short, required = true, maxLength, value }: {
+  {
+    style = TextInputStyle.Short,
+    required = true,
+    maxLength,
+    value,
+  }: {
     style?: TextInputStyle;
     required?: boolean;
     maxLength?: number;
     value?: string | null;
   } = {},
 ) {
-  return new LabelBuilder()
-    .setLabel(label)
-    .setTextInputComponent((input) => {
-      input.setCustomId(customId).setStyle(style).setRequired(required);
-      if (maxLength) {
-        input.setMaxLength(maxLength);
-      }
-      if (value) {
-        input.setValue(value);
-      }
-      return input;
-    });
+  return new LabelBuilder().setLabel(label).setTextInputComponent((input) => {
+    input.setCustomId(customId).setStyle(style).setRequired(required);
+    if (maxLength) {
+      input.setMaxLength(maxLength);
+    }
+    if (value) {
+      input.setValue(value);
+    }
+    return input;
+  });
 }
 
 /**
@@ -171,7 +187,10 @@ function buildTextLabel(
  * @returns The built LabelBuilder.
  */
 function buildMessageLabel() {
-  return buildTextLabel("Your message", "message", { style: TextInputStyle.Paragraph, maxLength: DISCORD_LIMITS.MESSAGE_LENGTH });
+  return buildTextLabel("Your message", "message", {
+    style: TextInputStyle.Paragraph,
+    maxLength: DISCORD_LIMITS.MESSAGE_LENGTH,
+  });
 }
 
 /**
@@ -187,8 +206,18 @@ async function buildTargetSelectRow(client: Client, senderId: string) {
     .setPlaceholder("Who do you want to message?")
     .addOptions(
       { label: "Santa", description: "Message your Secret Santa.", value: TARGETS.SANTA, emoji: { name: "🎅" } },
-      { label: "Receiver", description: "Message your receiver anonymously.", value: TARGETS.RECEIVER, emoji: { name: "🎁" } },
-      { label: "Channel", description: "Post to the Secret Santa channel anonymously.", value: TARGETS.CHANNEL, emoji: { name: "📢" } },
+      {
+        label: "Receiver",
+        description: "Message your receiver anonymously.",
+        value: TARGETS.RECEIVER,
+        emoji: { name: "🎁" },
+      },
+      {
+        label: "Channel",
+        description: "Post to the Secret Santa channel anonymously.",
+        value: TARGETS.CHANNEL,
+        emoji: { name: "📢" },
+      },
       {
         label: "User",
         description: `Message any other Santa. You will appear as "${receiver.displayName}'s Santa"`,
@@ -205,19 +234,19 @@ async function buildTargetSelectRow(client: Client, senderId: string) {
  * @returns The built LabelBuilder.
  */
 function buildRpModeLabel(defaultRpMode: string) {
-  return new LabelBuilder()
-    .setLabel("Roleplay style")
-    .setStringSelectMenuComponent((select) =>
-      select
-        .setCustomId("rp-mode")
-        .setRequired(false)
-        .setMinValues(0)
-        .addOptions(RP_MODE_CHOICES.map((choice) => ({
+  return new LabelBuilder().setLabel("Roleplay style").setStringSelectMenuComponent((select) =>
+    select
+      .setCustomId("rp-mode")
+      .setRequired(false)
+      .setMinValues(0)
+      .addOptions(
+        RP_MODE_CHOICES.map((choice) => ({
           label: choice.name,
           value: choice.value,
           default: choice.value === defaultRpMode,
-        })))
-    );
+        })),
+      ),
+  );
 }
 
 /**
@@ -237,19 +266,16 @@ async function buildUserLabel(client: Client, senderId: string) {
     return null;
   }
 
-  const options = await Promise.all(eligible.map(async (santa) => {
-    const user = await client.users.fetch(santa.discordId).catch(() => null);
-    return { label: user?.displayName ?? "Unknown user", value: santa.discordId };
-  }));
+  const options = await Promise.all(
+    eligible.map(async (santa) => {
+      const user = await client.users.fetch(santa.discordId).catch(() => null);
+      return { label: user?.displayName ?? "Unknown user", value: santa.discordId };
+    }),
+  );
 
   return new LabelBuilder()
     .setLabel("Which user?")
-    .setStringSelectMenuComponent((select) =>
-      select
-        .setCustomId("user")
-        .setRequired(true)
-        .addOptions(options)
-    );
+    .setStringSelectMenuComponent((select) => select.setCustomId("user").setRequired(true).addOptions(options));
 }
 
 /**
@@ -273,14 +299,18 @@ async function buildComposeModal(client: Client, target: string, senderId: strin
 
   // Only show the rp-mode selector when the feature flag allows picking it; otherwise the
   // configured default rp-mode is applied silently (see parseModalSubmission).
-  const rpModeLabel = SantaManager.isRpModeSelectionAllowed() ? buildRpModeLabel(SantaManager.getDefaultRpMode()) : null;
+  const rpModeLabel = SantaManager.isRpModeSelectionAllowed()
+    ? buildRpModeLabel(SantaManager.getDefaultRpMode())
+    : null;
 
   if (target === TARGETS.USER) {
     const userLabel = await buildUserLabel(client, senderId);
     if (!userLabel) {
       return null;
     }
-    return modal.addLabelComponents(...[userLabel, rpModeLabel, buildMessageLabel()].filter((l): l is LabelBuilder => !!l));
+    return modal.addLabelComponents(
+      ...[userLabel, rpModeLabel, buildMessageLabel()].filter((l): l is LabelBuilder => !!l),
+    );
   }
 
   // RECEIVER or CHANNEL.
@@ -299,7 +329,10 @@ function buildRegisterModal(existing?: { name: string; address: string; notes?: 
     .setCustomId(`${COMMAND_NAME}:registermodal`)
     .setTitle(existing ? "Update Secret Santa Registration" : "Register for Secret Santa")
     .addLabelComponents(
-      buildTextLabel("Name (shown on your package(s))", "name", { maxLength: SANTA_LIMITS.NAME_LENGTH, value: existing?.name }),
+      buildTextLabel("Name (shown on your package(s))", "name", {
+        maxLength: SANTA_LIMITS.NAME_LENGTH,
+        value: existing?.name,
+      }),
       buildTextLabel("Address (where your Santa should ship to)", "address", {
         style: TextInputStyle.Paragraph,
         maxLength: SANTA_LIMITS.ADDRESS_LENGTH,
@@ -511,31 +544,37 @@ async function buildHistorySelectRow(client: Client, userId: string, selected?: 
     .slice(0, HISTORY_MAX_USER_OPTIONS);
 
   // Anonymous Santas who messaged you are identified only by their receiver, shown as "<receiver>'s Santa".
-  const anonymousReceiverIds = SantaManager.getAnonymousSantaReceivers(userId)
-    .slice(0, HISTORY_MAX_USER_OPTIONS - userIds.length);
+  const anonymousReceiverIds = SantaManager.getAnonymousSantaReceivers(userId).slice(
+    0,
+    HISTORY_MAX_USER_OPTIONS - userIds.length,
+  );
 
-  const anonymousOptions = await Promise.all(anonymousReceiverIds.map(async (receiverId) => {
-    const receiver = await client.users.fetch(receiverId).catch(() => null);
-    const value = `${ANONYMOUS_SANTA_PREFIX}${receiverId}`;
-    return {
-      label: `${receiver?.displayName ?? "Unknown user"}'s Santa`,
-      description: "An anonymous Santa who messaged you.",
-      value,
-      emoji: { name: "🎅" },
-      default: value === selected,
-    };
-  }));
+  const anonymousOptions = await Promise.all(
+    anonymousReceiverIds.map(async (receiverId) => {
+      const receiver = await client.users.fetch(receiverId).catch(() => null);
+      const value = `${ANONYMOUS_SANTA_PREFIX}${receiverId}`;
+      return {
+        label: `${receiver?.displayName ?? "Unknown user"}'s Santa`,
+        description: "An anonymous Santa who messaged you.",
+        value,
+        emoji: { name: "🎅" },
+        default: value === selected,
+      };
+    }),
+  );
 
-  const userOptions = await Promise.all(userIds.map(async (id) => {
-    const user = await client.users.fetch(id).catch(() => null);
-    return {
-      label: user?.displayName ?? "Unknown user",
-      description: "A user you messaged anonymously.",
-      value: id,
-      emoji: { name: "✉️" },
-      default: id === selected,
-    };
-  }));
+  const userOptions = await Promise.all(
+    userIds.map(async (id) => {
+      const user = await client.users.fetch(id).catch(() => null);
+      return {
+        label: user?.displayName ?? "Unknown user",
+        description: "A user you messaged anonymously.",
+        value: id,
+        emoji: { name: "✉️" },
+        default: id === selected,
+      };
+    }),
+  );
 
   const select = new StringSelectMenuBuilder()
     .setCustomId(`${COMMAND_NAME}:history`)
@@ -575,14 +614,26 @@ function buildHistoryButtonRow(value: string, page: number, pageCount: number) {
   const atEnd = page >= pageCount - 1;
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(id(0, "first")).setEmoji("⏮️").setStyle(ButtonStyle.Secondary).setDisabled(atStart),
-    new ButtonBuilder().setCustomId(id(page - 1, "prev")).setEmoji("◀️").setStyle(ButtonStyle.Primary).setDisabled(atStart),
+    new ButtonBuilder()
+      .setCustomId(id(page - 1, "prev"))
+      .setEmoji("◀️")
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(atStart),
     new ButtonBuilder()
       .setCustomId(`${COMMAND_NAME}:histpage:indicator`)
       .setLabel(`${page + 1} / ${pageCount}`)
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(true),
-    new ButtonBuilder().setCustomId(id(page + 1, "next")).setEmoji("▶️").setStyle(ButtonStyle.Primary).setDisabled(atEnd),
-    new ButtonBuilder().setCustomId(id(pageCount - 1, "last")).setEmoji("⏭️").setStyle(ButtonStyle.Secondary).setDisabled(atEnd),
+    new ButtonBuilder()
+      .setCustomId(id(page + 1, "next"))
+      .setEmoji("▶️")
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(atEnd),
+    new ButtonBuilder()
+      .setCustomId(id(pageCount - 1, "last"))
+      .setEmoji("⏭️")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(atEnd),
   );
 }
 
@@ -605,7 +656,9 @@ async function buildHistoryView(client: Client, userId: string, value: string, p
   } else if (value.startsWith(ANONYMOUS_SANTA_PREFIX)) {
     // The value carries the Santa's receiver ID; map it back to the Santa who actually messaged us.
     const receiverId = value.slice(ANONYMOUS_SANTA_PREFIX.length);
-    otherId = SantaManager.getAnonymousSantas(userId).find((santaId) => SantaManager.getReceiver(santaId) === receiverId);
+    otherId = SantaManager.getAnonymousSantas(userId).find(
+      (santaId) => SantaManager.getReceiver(santaId) === receiverId,
+    );
   } else if (SantaManager.isRegistered(value) && value !== userId) {
     otherId = value;
   }
@@ -689,7 +742,10 @@ async function buildHistoryView(client: Client, userId: string, value: string, p
     let entry = `**${senderName}** • <t:${unixTime}:f>\n${truncate(text, SANTA_LIMITS.HISTORY_ENTRY_CHARS)}`;
     if (sentByMe && row.processed_content && row.processed_content !== row.original_content) {
       // Blockquote needs `> ` on every line, and matches body font size
-      const original = truncate(row.original_content, SANTA_LIMITS.HISTORY_ORIGINAL_CHARS).split("\n").map((line) => `> ${line}`).join("\n");
+      const original = truncate(row.original_content, SANTA_LIMITS.HISTORY_ORIGINAL_CHARS)
+        .split("\n")
+        .map((line) => `> ${line}`)
+        .join("\n");
       entry += `\n> *Original:*\n${original}`;
     }
 
@@ -760,7 +816,12 @@ async function showHistory(interaction: StringSelectMenuInteraction | ButtonInte
  * @param {Error} error The error that was thrown.
  */
 async function handleError(interaction: RepliableInteraction, error: unknown) {
-  const source = "commandName" in interaction ? interaction.commandName : "customId" in interaction ? interaction.customId : "unknown";
+  const source =
+    "commandName" in interaction
+      ? interaction.commandName
+      : "customId" in interaction
+        ? interaction.customId
+        : "unknown";
   logger.error(`Error executing ${source}`);
   logger.error(error);
   const payload: InteractionReplyOptions = {

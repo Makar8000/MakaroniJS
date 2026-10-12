@@ -1,11 +1,11 @@
-import { MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
-import type { SlashCommand } from "../../../utils/types.ts";
+import { MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import scheduler from "node-schedule";
-import SantaManager from "../../../utils/santa/santa-manager.ts";
-import { close as closeDb } from "../../../utils/db/db.ts";
 import config from "../../../config.ts";
+import { close as closeDb } from "../../../utils/db/db.ts";
 import logger from "../../../utils/logger.ts";
+import SantaManager from "../../../utils/santa/santa-manager.ts";
+import type { SlashCommand } from "../../../utils/types.ts";
 
 export default {
   data: new SlashCommandBuilder()
@@ -26,7 +26,7 @@ export default {
       closeDb();
       // Discord shutdown
       await interaction.client.destroy();
-      Deno.exit(0);
+      process.exit(0);
     } else {
       interaction.reply({
         content: "You do not have permission to run this command.",
@@ -34,7 +34,6 @@ export default {
       });
     }
   },
-  // deno-lint-ignore require-await
   async error(interaction: ChatInputCommandInteraction, error: unknown) {
     logger.error(`Error executing ${interaction.commandName}`);
     logger.error(error);

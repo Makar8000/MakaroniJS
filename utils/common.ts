@@ -35,7 +35,7 @@ export const getDiscordStr = (str: string, maxLen?: number) => {
  */
 const safeCutIndex = (text: string, end: number) => {
   const last = text.charCodeAt(end - 1);
-  if (last >= 0xD800 && last <= 0xDBFF) {
+  if (last >= 0xd800 && last <= 0xdbff) {
     return end - 1;
   }
   return end;
@@ -96,8 +96,10 @@ export const truncate = (text: string, max: number) => {
  *  The (non-empty) value of the environment variable.
  */
 export const requireEnv = (key: string): string => {
-  const value = Deno.env.get(key);
-  if (!value) throw new Error(`Missing required environment variable: ${key}`);
+  const value = Bun.env[key];
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
   return value;
 };
 

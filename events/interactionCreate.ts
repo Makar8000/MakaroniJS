@@ -24,8 +24,11 @@ export default {
       return;
     }
 
-    const isComponentOrModal = interaction.isButton() || interaction.isModalSubmit() ||
-      interaction.isStringSelectMenu() || interaction.isUserSelectMenu();
+    const isComponentOrModal =
+      interaction.isButton() ||
+      interaction.isModalSubmit() ||
+      interaction.isStringSelectMenu() ||
+      interaction.isUserSelectMenu();
     if (isComponentOrModal) {
       // Component/Modal customIds are namespaced as `<commandName>:<...>` so they can be
       // routed back to the command that created them.
@@ -44,7 +47,9 @@ export default {
         } else if ((interaction.isStringSelectMenu() || interaction.isUserSelectMenu()) && command.selectMenu) {
           await command.selectMenu(interaction);
         } else {
-          logger.error(`Command "${commandName}" does not support this type of interaction (customId: ${interaction.customId}).`);
+          logger.error(
+            `Command "${commandName}" does not support this type of interaction (customId: ${interaction.customId}).`,
+          );
         }
       } catch (error) {
         if (typeof command.error === "function") {

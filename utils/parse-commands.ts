@@ -1,4 +1,6 @@
-import { join, resolve, toFileUrl } from "@std/path";
+import { readdirSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import type { Collection } from "discord.js";
 import logger from "./logger.ts";
 
@@ -7,16 +9,16 @@ import logger from "./logger.ts";
  * Modules rejected by `isValid` are skipped with a warning.
  */
 export const loadModules = async <T>(dir: string, isValid: (m: unknown) => m is T): Promise<T[]> => {
-  const entries = Array.from(Deno.readDirSync(dir));
+  const entries = readdirSync(dir, { withFileTypes: true });
   const modules: T[] = [];
 
-  for (const folder of entries.filter((e) => e.isDirectory)) {
-    modules.push(...await loadModules(join(dir, folder.name), isValid));
+  for (const folder of entries.filter((e) => e.isDirectory())) {
+    modules.push(...(await loadModules(join(dir, folder.name), isValid)));
   }
 
   for (const file of entries.filter((e) => e.name.endsWith(".ts"))) {
     const path = resolve(dir, file.name);
-    const mod = await import(toFileUrl(path).href);
+    const mod = await import(pathToFileURL(path).href);
     const exported = mod.default || mod;
     if (isValid(exported)) {
       modules.push(exported);

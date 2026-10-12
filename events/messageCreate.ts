@@ -16,7 +16,7 @@ export default {
     }
 
     if (typeof command.hasPermission === "function" && !command.hasPermission(message)) {
-      logger.error(`You do not have permission to use \`${Deno.env.get("MESSAGE_PREFIX")}${messageCmd}\``);
+      logger.error(`You do not have permission to use \`${Bun.env.MESSAGE_PREFIX}${messageCmd}\``);
       return;
     }
 
@@ -24,7 +24,7 @@ export default {
       const params = new Collection<string, ResolvedMessageParam>();
       for (const param of command.data.params) {
         if (!param.isValid(message)) {
-          logger.error(`Invalid use of command \`${Deno.env.get("MESSAGE_PREFIX")}${messageCmd}\``);
+          logger.error(`Invalid use of command \`${Bun.env.MESSAGE_PREFIX}${messageCmd}\``);
           return;
         }
         params.set(param.name, {

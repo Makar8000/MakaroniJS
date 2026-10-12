@@ -1,8 +1,9 @@
-import scheduler from "node-schedule";
 import { type Client, Collection } from "discord.js";
-import { db } from "../db/db.ts";
+import scheduler from "node-schedule";
+import { db, prepare } from "../db/db.ts";
 import logger from "../logger.ts";
 import type { Reminder } from "../types.ts";
+
 const jobs = new Collection<string, scheduler.Job>();
 
 /** A row of the reminders table. */
@@ -41,8 +42,8 @@ function toReminder(row: ReminderRow): Reminder {
  *  The reminder, or undefined if it doesn't exist.
  */
 function getReminder(reminderId: string): Reminder | undefined {
-  const row: ReminderRow | undefined = db.prepare("SELECT * FROM reminders WHERE id = ?").get(reminderId);
-  return row && toReminder(row);
+  const row = prepare(db, "SELECT * FROM reminders WHERE id = ?").get(reminderId) as ReminderRow | null;
+  return row ? toReminder(row) : undefined;
 }
 
 /**
@@ -51,7 +52,7 @@ function getReminder(reminderId: string): Reminder | undefined {
  *  The reminder ID to delete.
  */
 function deleteReminder(reminderId: string) {
-  db.prepare("DELETE FROM reminders WHERE id = ?").run(reminderId);
+  prepare(db, "DELETE FROM reminders WHERE id = ?").run(reminderId);
 }
 
 /**
@@ -68,7 +69,10 @@ function scheduleReminder(client: Client, reminder: Reminder) {
     return null;
   }
 
-  db.prepare("INSERT OR REPLACE INTO reminders (id, unix_ts, author_id, channel_id, mention, message) VALUES (?, ?, ?, ?, ?, ?)").run(
+  prepare(
+    db,
+    "INSERT OR REPLACE INTO reminders (id, unix_ts, author_id, channel_id, mention, message) VALUES (?, ?, ?, ?, ?, ?)",
+  ).run(
     reminder.id,
     reminder.unixTs,
     reminder.authorId,
@@ -87,7 +91,7 @@ function scheduleReminder(client: Client, reminder: Reminder) {
  *  An array of reminders.
  */
 function getReminders(userId: string): Reminder[] {
-  const rows: ReminderRow[] = db.prepare("SELECT * FROM reminders WHERE author_id = ? ORDER BY unix_ts").all(userId);
+  const rows: ReminderRow[] = prepare(db, "SELECT * FROM reminders WHERE author_id = ? ORDER BY unix_ts").all(userId);
   return rows.map(toReminder);
 }
 
@@ -178,7 +182,7 @@ async function sendReminder(client: Client, reminder: Reminder) {
  *  The discord.js client.
  */
 function initJobs(client: Client) {
-  const rows: ReminderRow[] = db.prepare("SELECT * FROM reminders").all();
+  const rows: ReminderRow[] = prepare(db, "SELECT * FROM reminders").all();
 
   const delaySeconds = 5;
   const curTime = Math.floor(Date.now() / 1000) + delaySeconds;

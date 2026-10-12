@@ -1,9 +1,9 @@
-import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
-import type { SlashCommand } from "../../../utils/types.ts";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
+import { messages } from "../../../utils/hsr/config.ts";
 import HSRManager from "../../../utils/hsr/hsr-manager.ts";
 import logger from "../../../utils/logger.ts";
-import { messages } from "../../../utils/hsr/config.ts";
+import type { SlashCommand } from "../../../utils/types.ts";
 
 export default {
   data: new SlashCommandBuilder()
@@ -17,12 +17,9 @@ export default {
           option
             .setName("action")
             .setDescription("Are you subscribing or unsubscribing?")
-            .addChoices(
-              { name: "Subscribe", value: 1 },
-              { name: "Unsubscribe", value: 0 },
-            )
-            .setRequired(true)
-        )
+            .addChoices({ name: "Subscribe", value: 1 }, { name: "Unsubscribe", value: 0 })
+            .setRequired(true),
+        ),
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -32,12 +29,9 @@ export default {
           option
             .setName("action")
             .setDescription("Are you subscribing or unsubscribing?")
-            .addChoices(
-              { name: "Subscribe", value: 1 },
-              { name: "Unsubscribe", value: 0 },
-            )
-            .setRequired(true)
-        )
+            .addChoices({ name: "Subscribe", value: 1 }, { name: "Unsubscribe", value: 0 })
+            .setRequired(true),
+        ),
     ),
   async execute(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -105,7 +99,6 @@ export default {
       }
     }
   },
-  // deno-lint-ignore require-await
   async error(interaction: ChatInputCommandInteraction, error: unknown) {
     logger.error(`Error executing ${interaction.commandName}`);
     logger.error(error);

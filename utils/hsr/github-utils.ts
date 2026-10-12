@@ -1,8 +1,8 @@
-import { Octokit } from "@octokit/rest";
-import { throttling, type ThrottlingOptions } from "@octokit/plugin-throttling";
 import { retry } from "@octokit/plugin-retry";
-import { repoConfig } from "./config.ts";
+import { type ThrottlingOptions, throttling } from "@octokit/plugin-throttling";
+import { Octokit } from "@octokit/rest";
 import logger from "../logger.ts";
+import { repoConfig } from "./config.ts";
 
 const throttle: ThrottlingOptions = {
   onRateLimit: (retryAfter, options, _octokit, retryCount) => {
@@ -18,7 +18,7 @@ const throttle: ThrottlingOptions = {
 
 const MyOctokit = Octokit.plugin(throttling, retry);
 const octokit = new MyOctokit({
-  auth: Deno.env.get("GITHUB_TOKEN"),
+  auth: Bun.env.GITHUB_TOKEN,
   throttle,
 });
 
@@ -79,7 +79,7 @@ export async function getCommit(sha: string) {
  * @returns
  *  An object representing the json data downloaded.
  */
-// deno-lint-ignore no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: untyped JSON
 export async function downloadJsonFile(file: string, sha?: string): Promise<any> {
   const res = await octokit.rest.repos.getContent({
     headers: {

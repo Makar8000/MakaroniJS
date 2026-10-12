@@ -16,11 +16,7 @@ const users = {
   CHRIS: "134209083749171200",
 };
 
-const admins = [
-  users.MARK,
-  bots.MAKARONI,
-  bots.MEDLIONI,
-];
+const admins = [users.MARK, bots.MAKARONI, bots.MEDLIONI];
 
 export default {
   guilds,
@@ -29,9 +25,6 @@ export default {
   users: {
     ...users,
     admins,
-    monitorAllowed: [
-      ...admins,
-      users.CHRIS,
-    ],
+    monitorAllowed: [...admins, users.CHRIS],
   },
 };

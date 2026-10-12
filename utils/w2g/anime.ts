@@ -1,8 +1,8 @@
-import { Collection } from "discord.js";
 import { ANIME, type IAnimeResult, type ISearch, META } from "@consumet/extensions";
 import type { AnimeParser } from "@consumet/extensions/dist/models";
-import logger from "../logger.ts";
+import { Collection } from "discord.js";
 import { requireEnv } from "../common.ts";
+import logger from "../logger.ts";
 import type { AnimeInfo } from "../types.ts";
 
 const provider: AnimeParser = new ANIME[requireEnv("ANIME_PROVIDER") as keyof typeof ANIME]();
@@ -47,14 +47,16 @@ async function fetchAnimeInfo(id: string, originalQuery: string, episodeNumber: 
     infoCache.sweep((a) => time > (a.expires ?? Infinity));
 
     const cached = infoCache.get(id);
-    let data: AnimeInfo = cached?.episodes?.find((e) => e.number === episodeNumber) ? cached : await consumet.fetchAnimeInfo(id);
+    let data: AnimeInfo = cached?.episodes?.find((e) => e.number === episodeNumber)
+      ? cached
+      : await consumet.fetchAnimeInfo(id);
     const alternateTitles = [data.title.english, originalQuery];
     while (!data.episodes?.length && alternateTitles.length > 0) {
       const titleToSearch = alternateTitles.shift();
       if (!titleToSearch) {
         continue;
       }
-      const providerSearch = await provider.search(titleToSearch) as ISearch<IAnimeResult>;
+      const providerSearch = (await provider.search(titleToSearch)) as ISearch<IAnimeResult>;
       if ((providerSearch?.results?.length ?? 0) > 0) {
         const newData = await provider.fetchAnimeInfo(providerSearch.results[0].id);
         data = { ...data, episodes: newData?.episodes ?? [] };

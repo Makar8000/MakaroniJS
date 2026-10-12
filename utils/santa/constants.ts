@@ -1,13 +1,13 @@
 /** Embed colors used by the Secret Santa feature. */
 export const SANTA_COLORS = Object.freeze({
   /** Messages from any Santa. */
-  SANTA: 0xE74C3C,
+  SANTA: 0xe74c3c,
   /** Messages from your receiver. */
-  RECEIVER: 0x2ECCC7,
+  RECEIVER: 0x2eccc7,
   /** Messages from a user you messaged via `/ss msg` -> User. */
-  USER: 0xB377FF,
+  USER: 0xb377ff,
   /** The embed announcing who was selected as your receiver. */
-  RECEIVER_ASSIGNED: 0x22E669,
+  RECEIVER_ASSIGNED: 0x22e669,
 });
 
 /** Message-routing directions, named `<SENDER>_TO_<RECIPIENT>`. */

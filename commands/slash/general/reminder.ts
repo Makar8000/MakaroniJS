@@ -1,9 +1,9 @@
-import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
-import type { SlashCommand } from "../../../utils/types.ts";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
+import logger from "../../../utils/logger.ts";
 import config from "../../../utils/reminders/config.ts";
 import ReminderManager from "../../../utils/reminders/reminder-manager.ts";
-import logger from "../../../utils/logger.ts";
+import type { SlashCommand } from "../../../utils/types.ts";
 
 export default {
   data: new SlashCommandBuilder()
@@ -16,26 +16,19 @@ export default {
         .addIntegerOption((option) =>
           option
             .setName("time")
-            .setDescription("The time to send the reminder. This should be a Unix Timestamp (Seconds). https://hammertime.cyou/")
-            .setRequired(true)
+            .setDescription(
+              "The time to send the reminder. This should be a Unix Timestamp (Seconds). https://hammertime.cyou/",
+            )
+            .setRequired(true),
         )
         .addStringOption((option) =>
-          option
-            .setName("message")
-            .setDescription("The message to send at the time specified.")
-            .setRequired(true)
+          option.setName("message").setDescription("The message to send at the time specified.").setRequired(true),
         )
         .addMentionableOption((option) =>
-          option
-            .setName("mention")
-            .setDescription("Who should be mentioned in this reminder?")
-        )
+          option.setName("mention").setDescription("Who should be mentioned in this reminder?"),
+        ),
     )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("list")
-        .setDescription("List all of your scheduled reminders.")
-    )
+    .addSubcommand((subcommand) => subcommand.setName("list").setDescription("List all of your scheduled reminders."))
     .addSubcommand((subcommand) =>
       subcommand
         .setName("cancel")
@@ -44,8 +37,8 @@ export default {
           option
             .setName("id")
             .setDescription("The ID of the reminder to cancel. You can get this using the `/reminder list` command.")
-            .setRequired(true)
-        )
+            .setRequired(true),
+        ),
     ),
   async execute(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -114,7 +107,6 @@ export default {
       }
     }
   },
-  // deno-lint-ignore require-await
   async error(interaction: ChatInputCommandInteraction, error: unknown) {
     logger.error(`Error executing ${interaction.commandName}`);
     logger.error(error);

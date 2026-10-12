@@ -1,16 +1,18 @@
-import { type APIEmbedField, EmbedBuilder, time, TimestampStyles, type User } from "discord.js";
+import { type APIEmbedField, EmbedBuilder, TimestampStyles, time, type User } from "discord.js";
 import { getDiscordStr } from "../common.ts";
 import type { AnimeInfo } from "../types.ts";
 
 /** Formats a fuzzy date as a Discord long-date timestamp, or "???" if any part is missing. */
 const formatFuzzyDate = (date?: { year?: number | null; month?: number | null; day?: number | null }) => {
-  if (typeof date?.year !== "number" || typeof date.month !== "number" || typeof date.day !== "number") return "???";
+  if (typeof date?.year !== "number" || typeof date.month !== "number" || typeof date.day !== "number") {
+    return "???";
+  }
   // Noon UTC keeps the calendar day the same for viewers in every timezone.
   return time(new Date(Date.UTC(date.year, date.month - 1, date.day, 12)), TimestampStyles.LongDate);
 };
 
 const embedOptions = Object.freeze({
-  color: 0xFBCD3B,
+  color: 0xfbcd3b,
   title: "Click to join!",
   thumbnailUrl: "https://static.w2g.tv/static/watch2gether-share.jpg",
   fieldVideoUrl: "Video URL",
@@ -51,7 +53,7 @@ const addSuccess = (roomUrl: string, videoUrl: string, key: string, user: User) 
 };
 
 const embedOptionsAnime = Object.freeze({
-  color: 0x009FEE,
+  color: 0x009fee,
   title: "Click to join!",
   thumbnailUrl: "https://static.w2g.tv/static/watch2gether-share.jpg",
   fieldRoomUrl: "Room URL",
@@ -109,7 +111,7 @@ const createGenericAnime = (animeInfo: AnimeInfo, user: User, msg: string) => {
     }
     const externalSources: string[] = [];
     for (const key of Object.keys(embedOptionsAnime.mappings) as (keyof typeof embedOptionsAnime.mappings)[]) {
-      if (animeInfo.mappings && animeInfo.mappings[key]) {
+      if (animeInfo.mappings?.[key]) {
         const opts = embedOptionsAnime.mappings[key];
         const id = animeInfo.mappings[key];
         externalSources.push(`[${opts.name}](${opts.urlPrefix}${id} '${opts.hover}')`);

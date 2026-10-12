@@ -1,8 +1,14 @@
-import { ActivityType, MessageFlags, PermissionFlagsBits, type PresenceStatusData, SlashCommandBuilder } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
-import type { SlashCommand } from "../../../utils/types.ts";
+import {
+  ActivityType,
+  MessageFlags,
+  PermissionFlagsBits,
+  type PresenceStatusData,
+  SlashCommandBuilder,
+} from "discord.js";
 import config from "../../../config.ts";
 import logger from "../../../utils/logger.ts";
+import type { SlashCommand } from "../../../utils/types.ts";
 
 export default {
   data: new SlashCommandBuilder()
@@ -12,12 +18,7 @@ export default {
       subcommand
         .setName("activity")
         .setDescription("The activity of the bot.")
-        .addStringOption((option) =>
-          option
-            .setName("name")
-            .setDescription("The activity name.")
-            .setRequired(true)
-        )
+        .addStringOption((option) => option.setName("name").setDescription("The activity name.").setRequired(true))
         .addIntegerOption((option) =>
           option
             .setName("type")
@@ -31,8 +32,8 @@ export default {
               // { name: 'Streaming', value: ActivityType.Streaming },
               // { name: 'Custom', value: ActivityType.Custom },
             )
-            .setRequired(true)
-        )
+            .setRequired(true),
+        ),
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -48,8 +49,8 @@ export default {
               { name: "Do Not Disturb", value: "dnd" },
               { name: "Invisible", value: "invisible" },
             )
-            .setRequired(true)
-        )
+            .setRequired(true),
+        ),
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
   async execute(interaction) {
@@ -85,7 +86,6 @@ export default {
       logger.info(reply);
     }
   },
-  // deno-lint-ignore require-await
   async error(interaction: ChatInputCommandInteraction, error: unknown) {
     logger.error(`Error executing ${interaction.commandName}`);
     logger.error(error);

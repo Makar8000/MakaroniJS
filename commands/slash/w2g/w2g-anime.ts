@@ -1,36 +1,30 @@
-import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
+import logger from "../../../utils/logger.ts";
 import type { SlashCommand } from "../../../utils/types.ts";
 import consumet from "../../../utils/w2g/anime.ts";
-import w2g from "../../../utils/w2g/w2g.ts";
 import config from "../../../utils/w2g/config.ts";
-import logger from "../../../utils/logger.ts";
+import w2g from "../../../utils/w2g/w2g.ts";
 
 export default {
   data: new SlashCommandBuilder()
     .setName("w2g-anime")
     .setDescription("Watch anime together.")
     .addStringOption((option) =>
-      option
-        .setName("anime-name")
-        .setDescription("The name of the anime to watch together.")
-        .setRequired(true)
+      option.setName("anime-name").setDescription("The name of the anime to watch together.").setRequired(true),
     )
-    .addIntegerOption((option) =>
-      option
-        .setName("episode")
-        .setDescription("The episode number.")
-    )
+    .addIntegerOption((option) => option.setName("episode").setDescription("The episode number."))
     .addStringOption((option) =>
-      option
-        .setName("room-id")
-        .setDescription("The room ID to use. If none is provided, a new one will be created.")
+      option.setName("room-id").setDescription("The room ID to use. If none is provided, a new one will be created."),
     ),
   async execute(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const channel = interaction.channel;
     if (!channel?.isSendable()) {
-      await interaction.followUp({ content: "[ERROR] I can't send messages in this channel.", flags: MessageFlags.Ephemeral });
+      await interaction.followUp({
+        content: "[ERROR] I can't send messages in this channel.",
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
     const animeName = interaction.options.getString("anime-name", true);
@@ -76,7 +70,9 @@ export default {
     const roomId = interaction.options.getString("room-id");
     if (!roomId) {
       const key = await w2g.createRoom(videoUrl);
-      const resp = await w2g.addToRoom(key, videoUrl, { title: `[EP ${animeInfo.episodeNumber}] ${animeInfo.title.romaji}` });
+      const resp = await w2g.addToRoom(key, videoUrl, {
+        title: `[EP ${animeInfo.episodeNumber}] ${animeInfo.title.romaji}`,
+      });
       if (resp) {
         animeInfo.roomId = key;
         animeInfo.roomUrl = await w2g.getRoomUrl(key);
@@ -91,7 +87,9 @@ export default {
         });
       }
     } else {
-      const resp = await w2g.addToRoom(roomId, videoUrl, { title: `[EP ${animeInfo.episodeNumber}] ${animeInfo.title.romaji}` });
+      const resp = await w2g.addToRoom(roomId, videoUrl, {
+        title: `[EP ${animeInfo.episodeNumber}] ${animeInfo.title.romaji}`,
+      });
       if (resp) {
         animeInfo.roomId = roomId;
         animeInfo.roomUrl = await w2g.getRoomUrl(roomId);
@@ -107,7 +105,6 @@ export default {
       }
     }
   },
-  // deno-lint-ignore require-await
   async error(interaction: ChatInputCommandInteraction, error: unknown) {
     logger.error(`Error executing ${interaction.commandName}`);
     logger.error(error);

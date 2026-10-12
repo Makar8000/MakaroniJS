@@ -1,6 +1,6 @@
 import { type APIEmbedField, EmbedBuilder } from "discord.js";
-import config from "./config.ts";
 import logger from "../logger.ts";
+import config from "./config.ts";
 
 /** A stat entry from an etro gearset's `totalParams`. */
 interface EtroParam {
@@ -60,7 +60,7 @@ async function getFromId(etroId?: string | null) {
     // Parse total params
     if (json.totalParams?.length > 0) {
       json.totalParams = json.totalParams.map((p: EtroParam) => {
-        p.id = Number.parseInt(`${p.id}`);
+        p.id = Number.parseInt(`${p.id}`, 10);
         if (p.name.startsWith("Weapon")) {
           p.name = "WD";
         }
@@ -69,25 +69,40 @@ async function getFromId(etroId?: string | null) {
     }
 
     // Get item names from XIVAPI
-    const itemIds = Object.keys(config.augmentTokens).map((slot) => json[slot]).join(",");
-    const xivApiUrl = `${config.apiUrl}/Item?private_key=${Deno.env.get("XIVAPI_TOKEN")}&ids=${itemIds}&columns=Name,ID`;
-    const itemNameMap = (await getJsonFromUrl(xivApiUrl))?.Results.reduce((p: Record<string, string>, c: { ID: number; Name: string }) => {
-      if (typeof c === "object") {
-        p[c.ID] = c.Name;
-      }
-      return p;
-    }, {});
-    if (!itemNameMap) return null;
+    const itemIds = Object.keys(config.augmentTokens)
+      .map((slot) => json[slot])
+      .join(",");
+    const xivApiUrl = `${config.apiUrl}/Item?private_key=${Bun.env.XIVAPI_TOKEN}&ids=${itemIds}&columns=Name,ID`;
+    const itemNameMap = (await getJsonFromUrl(xivApiUrl))?.Results.reduce(
+      (p: Record<string, string>, c: { ID: number; Name: string }) => {
+        if (typeof c === "object") {
+          p[c.ID] = c.Name;
+        }
+        return p;
+      },
+      {},
+    );
+    if (!itemNameMap) {
+      return null;
+    }
 
     // Add other etro info
     set.name = json.name;
     set.job = json.jobAbbrev;
-    set.params = json.totalParams?.filter((p: EtroParam) => config.etroParams.statOrder.includes(p.id))
-      .sort((a: EtroParam, b: EtroParam) => config.etroParams.statOrder.indexOf(a.id) - config.etroParams.statOrder.indexOf(b.id));
-    set.gcd = json.totalParams?.filter((p: EtroParam) => p.name.startsWith(config.etroParams.gcd))
+    set.params = json.totalParams
+      ?.filter((p: EtroParam) => config.etroParams.statOrder.includes(p.id))
+      .sort(
+        (a: EtroParam, b: EtroParam) =>
+          config.etroParams.statOrder.indexOf(a.id) - config.etroParams.statOrder.indexOf(b.id),
+      );
+    set.gcd = json.totalParams
+      ?.filter((p: EtroParam) => p.name.startsWith(config.etroParams.gcd))
       .sort((a: EtroParam, b: EtroParam) => a.name.localeCompare(b.name));
     set.dmg = json.totalParams?.find((p: EtroParam) => p.name === config.etroParams.dmg)?.value;
-    set.notes = json.notes?.replaceAll(/<(?:hr|\/(?:h[0-9]|p|li))>/g, "\n")?.replaceAll(/<[^<]+>/g, " ").trim();
+    set.notes = json.notes
+      ?.replaceAll(/<(?:hr|\/(?:h[0-9]|p|li))>/g, "\n")
+      ?.replaceAll(/<[^<]+>/g, " ")
+      .trim();
     if (json.food && typeof json.food === "number") {
       const foodJson = await getJsonFromUrl(`${config.etroFoodApiUrl}${json.food}`);
       if (foodJson) {
@@ -125,11 +140,10 @@ async function getFromId(etroId?: string | null) {
       if (ringSlots.includes(slot)) {
         ringItemNames.push(itemNameMap[itemId]);
         if (
-          ringItemNames.length === 2 && ringItemNames[0] !== ringItemNames[1] &&
-          (
-            (ringItemNames[0].startsWith("Augmented") && ringItemNames[0].endsWith(ringItemNames[1])) ||
-            (ringItemNames[1].startsWith("Augmented") && ringItemNames[1].endsWith(ringItemNames[0]))
-          )
+          ringItemNames.length === 2 &&
+          ringItemNames[0] !== ringItemNames[1] &&
+          ((ringItemNames[0].startsWith("Augmented") && ringItemNames[0].endsWith(ringItemNames[1])) ||
+            (ringItemNames[1].startsWith("Augmented") && ringItemNames[1].endsWith(ringItemNames[0])))
         ) {
           // Add an extra ring to the tome counter and remove it from raidPieces
           set.tomes += config.tomeCost[slot];
@@ -185,7 +199,7 @@ function getAsEmbed(etroSet: EtroSet) {
   }
 
   const description = etroSet.raidPieces.reduce((acc: string, cur: string, i: number) => {
-    return `${acc}${cur.charAt(0).toUpperCase()}${cur.substr(1)}${i != etroSet.raidPieces.length - 1 ? ", " : ""}`;
+    return `${acc}${cur.charAt(0).toUpperCase()}${cur.substr(1)}${i !== etroSet.raidPieces.length - 1 ? ", " : ""}`;
   }, "");
   const embed = new EmbedBuilder()
     .setColor(config.embedOptions.color)
@@ -201,7 +215,7 @@ function getAsEmbed(etroSet: EtroSet) {
   return embed;
 }
 
-// deno-lint-ignore no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: untyped JSON
 async function getJsonFromUrl(url: string, options?: RequestInit): Promise<any> {
   const resp = await fetch(url, options);
   if (!resp.ok) {

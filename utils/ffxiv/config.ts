@@ -55,13 +55,9 @@ const etroParams = Object.freeze({
   gcd: "GCD",
   statOrder: [
     // Weapon
-    12,
-    13,
+    12, 13,
     // Primary
-    1,
-    2,
-    4,
-    5,
+    1, 2, 4, 5,
     // Vitality
     3,
     // Critical Hit
@@ -71,16 +67,14 @@ const etroParams = Object.freeze({
     // Determination
     44,
     // SPS & SKS
-    45,
-    46,
+    45, 46,
     // Piety & Tenacity
-    19,
-    6,
+    19, 6,
   ],
 });
 
 const embedOptions = Object.freeze({
-  color: 0xB460A6,
+  color: 0xb460a6,
   name: "Etro Data",
   title: "Non-Tome Pieces",
   iconUrl: "https://etro.gg/favicon.png",

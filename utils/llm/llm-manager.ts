@@ -1,9 +1,9 @@
 import { OpenRouter } from "@openrouter/sdk";
 import type { ChatMessages } from "@openrouter/sdk/models";
 import { Collection, type Message } from "discord.js";
-import config from "./config.ts";
-import logger from "../logger.ts";
 import { requireEnv } from "../common.ts";
+import logger from "../logger.ts";
+import config from "./config.ts";
 
 const openRouter = new OpenRouter();
 const prompts = new Collection<string, ChatMessages[]>();
@@ -58,10 +58,7 @@ function addPromptContext(messageId: string, context: ChatMessages[]) {
  */
 async function sendPrompt(message: Message, prompt: string): Promise<ChatMessages[] | null> {
   try {
-    const messages: ChatMessages[] = [
-      ...getPromptContext(message),
-      { role: "user", content: prompt },
-    ];
+    const messages: ChatMessages[] = [...getPromptContext(message), { role: "user", content: prompt }];
 
     const response = await openRouter.chat.send({
       chatRequest: {

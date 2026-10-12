@@ -9,7 +9,7 @@ const Regexes = {
 
 export default {
   data: {
-    name: `<@${Deno.env.get("DISCORD_USER_ID")}>`,
+    name: `<@${Bun.env.DISCORD_USER_ID}>`,
     description: "Use an LLM",
     ignorePrefix: true,
     params: [
@@ -44,7 +44,6 @@ export default {
       logger.error("Unable to get LLM response.");
     }
   },
-  // deno-lint-ignore require-await
   async error(message: Message, error: unknown) {
     logger.error(`Error executing ${message.content.split(" ", 1)[0]}`);
     logger.error(error);

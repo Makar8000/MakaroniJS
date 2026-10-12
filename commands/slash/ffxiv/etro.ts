@@ -1,18 +1,15 @@
-import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
-import type { SlashCommand } from "../../../utils/types.ts";
+import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import etro from "../../../utils/ffxiv/etro.ts";
 import logger from "../../../utils/logger.ts";
+import type { SlashCommand } from "../../../utils/types.ts";
 
 export default {
   data: new SlashCommandBuilder()
     .setName("etro")
     .setDescription("Parse currency required to obtain an etro set.")
     .addStringOption((option) =>
-      option
-        .setName("etro-link")
-        .setDescription("The link to the etro set.")
-        .setRequired(true)
+      option.setName("etro-link").setDescription("The link to the etro set.").setRequired(true),
     ),
   async execute(interaction) {
     await interaction.deferReply();
@@ -30,7 +27,6 @@ export default {
       });
     }
   },
-  // deno-lint-ignore require-await
   async error(interaction: ChatInputCommandInteraction, error: unknown) {
     logger.error(`Error executing ${interaction.commandName}`);
     logger.error(error);

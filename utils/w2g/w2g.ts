@@ -10,7 +10,7 @@ import logger from "../logger.ts";
 async function createRoom(url?: string | null) {
   try {
     const body: Record<string, unknown> = {
-      w2g_api_key: `${Deno.env.get("W2G_KEY")}`,
+      w2g_api_key: `${Bun.env.W2G_KEY}`,
       bg_color: "#1F1F1F",
       bg_opacity: "100",
     };
@@ -21,7 +21,7 @@ async function createRoom(url?: string | null) {
     const resp = await fetch("https://api.w2g.tv/rooms/create.json", {
       method: "POST",
       headers: {
-        "Accept": "application/json",
+        Accept: "application/json",
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
@@ -56,7 +56,7 @@ async function createRoom(url?: string | null) {
 async function addToRoom(streamkey: string, url: string, opts?: { title?: string }) {
   try {
     const body: Record<string, unknown> = {
-      w2g_api_key: `${Deno.env.get("W2G_KEY")}`,
+      w2g_api_key: `${Bun.env.W2G_KEY}`,
     };
     const item: { url: string; title?: string } = {
       url: `${url}`,
@@ -70,7 +70,7 @@ async function addToRoom(streamkey: string, url: string, opts?: { title?: string
     const resp = await fetch(`https://api.w2g.tv/rooms/${streamkey}/playlists/current/playlist_items/sync_update`, {
       method: "POST",
       headers: {
-        "Accept": "application/json",
+        Accept: "application/json",
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),

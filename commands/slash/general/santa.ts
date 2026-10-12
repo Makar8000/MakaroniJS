@@ -1,24 +1,24 @@
-import { DiscordAPIError, MessageFlags, RESTJSONErrorCodes, SlashCommandBuilder, type StringSelectMenuInteraction } from "discord.js";
-import type { SlashCommand } from "../../../utils/types.ts";
-import SantaManager from "../../../utils/santa/santa-manager.ts";
-import SantaMessaging from "../../../utils/santa/santa-interactions.ts";
+import {
+  DiscordAPIError,
+  MessageFlags,
+  RESTJSONErrorCodes,
+  SlashCommandBuilder,
+  type StringSelectMenuInteraction,
+} from "discord.js";
 import { chunkText } from "../../../utils/common.ts";
-import { DISCORD_LIMITS } from "../../../utils/santa/constants.ts";
 import logger from "../../../utils/logger.ts";
+import { DISCORD_LIMITS } from "../../../utils/santa/constants.ts";
+import SantaMessaging from "../../../utils/santa/santa-interactions.ts";
+import SantaManager from "../../../utils/santa/santa-manager.ts";
+import type { SlashCommand } from "../../../utils/types.ts";
 
 export default {
   data: new SlashCommandBuilder()
     .setName("ss")
     .setDescription("Secret Santa commands.")
+    .addSubcommand((subcommand) => subcommand.setName("msg").setDescription("Compose a Secret Santa message."))
     .addSubcommand((subcommand) =>
-      subcommand
-        .setName("msg")
-        .setDescription("Compose a Secret Santa message.")
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("history")
-        .setDescription("View your Secret Santa message history.")
+      subcommand.setName("history").setDescription("View your Secret Santa message history."),
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -29,19 +29,15 @@ export default {
             .setName("status")
             .setDescription("The milestone state.")
             .setRequired(true)
-            .addChoices(...Object.entries(SantaMessaging.GIFT_STATUS_LABEL).map(([value, name]) => ({ name, value })))
-        )
+            .addChoices(...Object.entries(SantaMessaging.GIFT_STATUS_LABEL).map(([value, name]) => ({ name, value }))),
+        ),
     )
     .addSubcommand((subcommand) =>
       subcommand
         .setName("register")
-        .setDescription("Register for Secret Santa or update your registration information.")
+        .setDescription("Register for Secret Santa or update your registration information."),
     )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName("unregister")
-        .setDescription("Unregister for Secret Santa.")
-    ),
+    .addSubcommand((subcommand) => subcommand.setName("unregister").setDescription("Unregister for Secret Santa.")),
   async execute(interaction) {
     const subcommand = interaction.options.getSubcommand();
     logger.debug(`Resolving subcommand: ${subcommand}`);
@@ -233,7 +229,9 @@ export default {
         content: `${
           added ? "Successfully registered." : "Successfully updated registration."
         } Below is a preview of how your Santa will receive your information:`,
-        embeds: [SantaManager.getEmbedForSanta(interaction.user, { discordId: interaction.user.id, name, address, notes })],
+        embeds: [
+          SantaManager.getEmbedForSanta(interaction.user, { discordId: interaction.user.id, name, address, notes }),
+        ],
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -254,9 +252,10 @@ export default {
     } catch (err) {
       logger.error(err);
       const label = SantaMessaging.DIRECTION_LABEL[direction];
-      const reason = err instanceof DiscordAPIError && err.code === RESTJSONErrorCodes.CannotSendMessagesToThisUser
-        ? `The ${label} has their DMs closed, so your message could not be delivered.`
-        : `There was an issue sending your message to ${label}.`;
+      const reason =
+        err instanceof DiscordAPIError && err.code === RESTJSONErrorCodes.CannotSendMessagesToThisUser
+          ? `The ${label} has their DMs closed, so your message could not be delivered.`
+          : `There was an issue sending your message to ${label}.`;
       // The message can be up to Discord's max length on its own, so send this in pieces too.
       for (const chunk of chunkText(`[ERROR] ${reason}\nMessage: ${msg}`, DISCORD_LIMITS.MESSAGE_LENGTH)) {
         await interaction.followUp({

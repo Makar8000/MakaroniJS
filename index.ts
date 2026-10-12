@@ -1,21 +1,25 @@
-import { join } from "@std/path";
+import { join } from "node:path";
 import { ActivityType, Client, Collection, GatewayIntentBits, Partials } from "discord.js";
+import { requireEnv } from "./utils/common.ts";
 import logger from "./utils/logger.ts";
 import parseCommands, { loadModules } from "./utils/parse-commands.ts";
-import { requireEnv } from "./utils/common.ts";
 import type { BotEvent, MessageCommand, SlashCommand } from "./utils/types.ts";
 
-const root = import.meta.dirname!;
+const root = import.meta.dirname;
 
 const client = new Client({
-  intents: Object.values(GatewayIntentBits).filter((v): v is GatewayIntentBits => typeof v === "number" && v !== GatewayIntentBits.GuildBans),
+  intents: Object.values(GatewayIntentBits).filter(
+    (v): v is GatewayIntentBits => typeof v === "number" && v !== GatewayIntentBits.GuildBans,
+  ),
   partials: Object.values(Partials).filter((v): v is Partials => typeof v === "number"),
   presence: {
     status: "online",
-    activities: [{
-      name: "🌱",
-      type: ActivityType.Playing,
-    }],
+    activities: [
+      {
+        name: "🌱",
+        type: ActivityType.Playing,
+      },
+    ],
   },
 });
 

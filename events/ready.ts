@@ -1,9 +1,9 @@
 import { type Client, Events } from "discord.js";
-import logger from "../utils/logger.ts";
-import type { BotEvent } from "../utils/types.ts";
-import ReminderManager from "../utils/reminders/reminder-manager.ts";
 import HSRManager from "../utils/hsr/hsr-manager.ts";
+import logger from "../utils/logger.ts";
+import ReminderManager from "../utils/reminders/reminder-manager.ts";
 import SantaManager from "../utils/santa/santa-manager.ts";
+import type { BotEvent } from "../utils/types.ts";
 
 export default {
   name: Events.ClientReady,
