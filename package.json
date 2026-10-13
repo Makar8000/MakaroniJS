@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "start": "bun index.ts",
-    "prod": "pm2 start index.ts --name makaroni --log data/Makaroni.log --interpreter bun",
+    "prod": "pm2 start \"bun index.ts\" --name makaroni --log data/Makaroni.log",
     "stop": "pm2 stop makaroni",
     "monitor": "pm2 logs makaroni",
     "restart": "git pull && bun install --frozen-lockfile && pm2 restart makaroni --update-env",
