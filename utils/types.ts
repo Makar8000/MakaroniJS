@@ -1,5 +1,6 @@
 import type { IAnimeInfo, ITitle } from "@consumet/extensions";
 import type {
+  AutocompleteInteraction,
   ButtonInteraction,
   ChatInputCommandInteraction,
   ClientEvents,
@@ -23,6 +24,7 @@ type AnyInteraction =
 export interface SlashCommand {
   data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder | SlashCommandSubcommandsOnlyBuilder;
   execute(interaction: ChatInputCommandInteraction): Promise<void>;
+  autocomplete?(interaction: AutocompleteInteraction): Promise<void>;
   button?(interaction: ButtonInteraction): Promise<void>;
   modalSubmit?(interaction: ModalSubmitInteraction): Promise<void>;
   selectMenu?(interaction: StringSelectMenuInteraction | UserSelectMenuInteraction): Promise<void>;

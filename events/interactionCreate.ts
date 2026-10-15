@@ -24,6 +24,15 @@ export default {
       return;
     }
 
+    if (interaction.isAutocomplete()) {
+      try {
+        await interaction.client.commands.slash.get(interaction.commandName)?.autocomplete?.(interaction);
+      } catch (error) {
+        logger.error({ err: error }, `Autocomplete failed for ${interaction.commandName}`);
+      }
+      return;
+    }
+
     const isComponentOrModal =
       interaction.isButton() ||
       interaction.isModalSubmit() ||

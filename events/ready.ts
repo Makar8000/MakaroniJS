@@ -1,4 +1,5 @@
 import { type Client, Events } from "discord.js";
+import OdyleManager from "../utils/aion/odyle-manager.ts";
 import HSRManager from "../utils/hsr/hsr-manager.ts";
 import logger from "../utils/logger.ts";
 import ReminderManager from "../utils/reminders/reminder-manager.ts";
@@ -13,5 +14,6 @@ export default {
     ReminderManager.initJobs(client);
     HSRManager.initJobs(client);
     SantaManager.init(client);
+    OdyleManager.initJobs(client);
   },
 } satisfies BotEvent<Events.ClientReady>;
