@@ -76,7 +76,7 @@ export default {
       sub
         .setName("get-characters")
         .setDescription("List registered characters, their energy and cap times.")
-        .addBooleanOption((o) => o.setName("all").setDescription("Show every user's characters (default: false)")),
+        .addBooleanOption((o) => o.setName("all").setDescription("Show every user's characters (default: true)")),
     )
     .addSubcommand((sub) =>
       nameOption(
@@ -149,7 +149,7 @@ export default {
       } else if (sub === "cap") {
         await reply(summary(resolveCharacter(interaction, true)));
       } else if (sub === "get-characters") {
-        const all = interaction.options.getBoolean("all") ?? false;
+        const all = interaction.options.getBoolean("all") ?? true;
         const list = all ? getAllCharacters() : getUserCharacters(interaction.user.id);
         if (list.length === 0) {
           throw new UserError(
