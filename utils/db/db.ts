@@ -11,7 +11,7 @@ export const dataDir = Bun.env.DATA_DIR ?? join(import.meta.dirname, "../../data
  * General-purpose database
  */
 export const db = new Database(join(dataDir, "makaroni.db"), { create: true, strict: true });
-db.exec(readFileSync(join(import.meta.dirname, "db-schema.sql"), "utf8"));
+db.run(readFileSync(join(import.meta.dirname, "db-schema.sql"), "utf8"));
 
 /**
  * Prepares a statement with loosely typed rows/params (bun:sqlite types rows as `unknown`).

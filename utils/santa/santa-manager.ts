@@ -774,7 +774,7 @@ function seedDefaults() {
  * @param {Client} client The Discord client.
  */
 function init(client: Client) {
-  db.exec(readFileSync(join(import.meta.dirname, "ss-schema.sql"), "utf8"));
+  db.run(readFileSync(join(import.meta.dirname, "ss-schema.sql"), "utf8"));
   seedDefaults();
   warmUserCache(client).catch((err) => logger.error({ err }, "Failed to warm the Secret Santa user cache:"));
 }
