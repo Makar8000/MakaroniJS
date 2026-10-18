@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { ActivityType, Client, Collection, GatewayIntentBits, Partials } from "discord.js";
+import { ActivityType, Client, Collection, GatewayIntentBits, Partials, type PresenceStatusData } from "discord.js";
 import { requireEnv } from "./utils/common.ts";
 import logger from "./utils/logger.ts";
 import parseCommands, { loadModules } from "./utils/parse-commands.ts";
@@ -13,7 +13,7 @@ const client = new Client({
   ),
   partials: Object.values(Partials).filter((v): v is Partials => typeof v === "number"),
   presence: {
-    status: "online",
+    status: (Bun.env.DISCORD_BOT_STATUS ?? "online") as PresenceStatusData,
     activities: [
       {
         name: "🌱",
