@@ -18,16 +18,9 @@ import {
   type User,
 } from "discord.js";
 import { chunkText, truncate } from "../common.ts";
+import { DISCORD_LIMITS } from "../constants.ts";
 import logger from "../logger.ts";
-import {
-  ANONYMOUS_SANTA_PREFIX,
-  DIRECTIONS,
-  DISCORD_LIMITS,
-  RP_MODES,
-  SANTA_COLORS,
-  SANTA_LIMITS,
-  TARGETS,
-} from "./constants.ts";
+import { ANONYMOUS_SANTA_PREFIX, DIRECTIONS, RP_MODES, SANTA_COLORS, SANTA_LIMITS, TARGETS } from "./constants.ts";
 import SantaManager from "./santa-manager.ts";
 
 // Namespace prefix for customIds built/parsed by this module, matching the `/ss` command name.

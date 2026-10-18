@@ -40,14 +40,6 @@ export const RP_MODES = Object.freeze({
   DISABLED: "DISABLED",
 });
 
-/** Limits imposed by Discord. */
-export const DISCORD_LIMITS = Object.freeze({
-  /** Max characters in a message (and in our message inputs). */
-  MESSAGE_LENGTH: 2000,
-  /** Max options in a string select menu. */
-  SELECT_OPTIONS: 25,
-});
-
 /** Limits specific to Secret Santa. */
 export const SANTA_LIMITS = Object.freeze({
   /** Max characters of embed description per history page, leaving headroom under Discord's limit. */
@@ -73,6 +65,5 @@ export default {
   DIRECTIONS,
   TARGETS,
   RP_MODES,
-  DISCORD_LIMITS,
   SANTA_LIMITS,
 };

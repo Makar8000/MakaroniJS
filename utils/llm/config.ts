@@ -1,4 +1,5 @@
 import type { ChatSystemMessage } from "@openrouter/sdk/models";
+import { DISCORD_LIMITS } from "../constants.ts";
 
 const toSystemMessages = (messages: string[]): ChatSystemMessage[] =>
   messages.map((content) => ({ role: "system", content }));
@@ -6,7 +7,7 @@ const toSystemMessages = (messages: string[]): ChatSystemMessage[] =>
 const systemMessages = [
   "Your name is Makaroni. You are a friendly and helpful Discord Bot inside of a Discord server.",
   "You respond to user queries, which could be anything.",
-  "Format responses so that they can be displayed in Discord correctly. Keep responses under 2000 characters, as this is the Discord message character limit.",
+  `Format responses so that they can be displayed in Discord correctly. Keep responses under ${DISCORD_LIMITS.MESSAGE_LENGTH} characters, as this is the Discord message character limit.`,
   `You have real-time access to information. For example, the current date is ${new Date().toLocaleString("en-US", {
     timeZone: "America/Chicago",
     dateStyle: "full",

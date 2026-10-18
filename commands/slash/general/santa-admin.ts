@@ -1,7 +1,7 @@
 import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import config from "../../../config.ts";
+import { DISCORD_LIMITS } from "../../../utils/constants.ts";
 import logger from "../../../utils/logger.ts";
-import { DISCORD_LIMITS } from "../../../utils/santa/constants.ts";
 import SantaMessaging from "../../../utils/santa/santa-interactions.ts";
 import SantaManager from "../../../utils/santa/santa-manager.ts";
 import type { SlashCommand } from "../../../utils/types.ts";

@@ -76,6 +76,38 @@ export type AnimeInfo = IAnimeInfo & {
   roomUrl?: string;
 };
 
+/** A wallpaper as returned by the MakaroniHTTP wallpapers API. */
+export interface Wallpaper {
+  id: number;
+  file_url: string;
+  tags: string;
+  tag_string: string;
+}
+
+/** Fields accepted by the wallpapers API when creating (all required) or updating (all optional). */
+export interface WallpaperBody {
+  title: string;
+  tags: string;
+  file_url: string;
+  enabled: boolean;
+}
+
+export interface ApiResult<T> {
+  ok: boolean;
+  status: number;
+  /** Parsed JSON body. On failure this is typically `{ error }`; on 204 it is null. */
+  data: T | null;
+  error?: string;
+  /** Response headers. Empty if the request never got a response. */
+  headers: Headers;
+}
+
+/** An `ApiResult` for a paginated list endpoint. */
+export type PagedResult<T> = ApiResult<T[]> & {
+  /** Total matches ignoring pagination. */
+  total: number;
+};
+
 declare module "discord.js" {
   interface Client {
     commands: {

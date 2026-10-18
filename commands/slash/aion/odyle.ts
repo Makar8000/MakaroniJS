@@ -24,6 +24,7 @@ import {
   UserError,
 } from "../../../utils/aion/odyle-utils.ts";
 import { chunkText } from "../../../utils/common.ts";
+import { DISCORD_LIMITS } from "../../../utils/constants.ts";
 import logger from "../../../utils/logger.ts";
 import type { SlashCommand } from "../../../utils/types.ts";
 
@@ -161,7 +162,7 @@ export default {
           const byOwner = Map.groupBy(list, (c) => c.owner_id);
           text = [...byOwner].map(([owner, chars]) => `<@${owner}>\n${chars.map(summary).join("\n")}`).join("\n\n");
         }
-        const [first, ...rest] = chunkText(text, 2000);
+        const [first, ...rest] = chunkText(text, DISCORD_LIMITS.MESSAGE_LENGTH);
         await reply(first);
         for (const chunk of rest) {
           await interaction.followUp({ content: chunk, flags: MessageFlags.Ephemeral });
@@ -195,7 +196,7 @@ export default {
     await interaction.respond(
       pool
         .filter((c) => c.name.toLowerCase().includes(typed))
-        .slice(0, 25)
+        .slice(0, DISCORD_LIMITS.AUTOCOMPLETE_CHOICES)
         .map((c) => ({ name: c.name, value: c.name })),
     );
   },
