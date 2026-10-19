@@ -1,8 +1,12 @@
 import logger from "../logger.ts";
-import type { ApiResult, PagedResult, Wallpaper, WallpaperBody } from "../types.ts";
+import type { ApiResult, PagedResult, Wallpaper, WallpaperBody, WallpaperDomain } from "../types.ts";
 
 /** Calls the MakaroniHTTP wallpapers API. Never throws; network failures resolve to `{ ok: false, status: 0 }`. */
-async function request<T>(method: string, path = "", body?: Partial<WallpaperBody>): Promise<ApiResult<T>> {
+async function request<T>(
+  method: string,
+  path = "",
+  body?: Partial<WallpaperBody> | Partial<WallpaperDomain>,
+): Promise<ApiResult<T>> {
   try {
     const resp = await fetch(`${Bun.env.INTERNAL_API_URL}/wallpapers${path}`, {
       method,
@@ -55,9 +59,24 @@ const update = (id: number, patch: Partial<WallpaperBody>) => request<Wallpaper>
 
 const remove = (id: number) => request<null>("DELETE", `/${id}`);
 
+const listDomains = () => request<WallpaperDomain[]>("GET", "/domains");
+
+// `type` is optional on create; the API defaults it to "danbooru".
+const createDomain = (body: Omit<WallpaperDomain, "type"> & Partial<Pick<WallpaperDomain, "type">>) =>
+  request<WallpaperDomain>("POST", "/domains", body);
+
+const updateDomain = (name: string, patch: Partial<Omit<WallpaperDomain, "name">>) =>
+  request<WallpaperDomain>("PUT", `/domains/${encodeURIComponent(name)}`, patch);
+
+const removeDomain = (name: string) => request<null>("DELETE", `/domains/${encodeURIComponent(name)}`);
+
 export default {
   list,
   create,
   update,
   remove,
+  listDomains,
+  createDomain,
+  updateDomain,
+  removeDomain,
 };

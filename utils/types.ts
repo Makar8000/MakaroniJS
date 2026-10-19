@@ -92,6 +92,14 @@ export interface WallpaperBody {
   enabled: boolean;
 }
 
+/** A wallpaper domain: `/wallpapers/<name>` redirects to `base_url` with `tags` appended. */
+export interface WallpaperDomain {
+  name: string;
+  base_url: string;
+  tags: string;
+  type: "danbooru" | "moebooru" | "custom";
+}
+
 export interface ApiResult<T> {
   ok: boolean;
   status: number;

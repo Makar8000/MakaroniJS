@@ -11,7 +11,7 @@ import {
   TextDisplayBuilder,
 } from "discord.js";
 import { truncate } from "../common.ts";
-import type { ApiResult, Wallpaper } from "../types.ts";
+import type { ApiResult, Wallpaper, WallpaperDomain } from "../types.ts";
 
 /** Namespace prefix for customIds, matching the `/wallpaper` command name. */
 const COMMAND_NAME = "wallpaper";
@@ -127,9 +127,13 @@ const createListMessage = (rows: Wallpaper[], total: number, offset: number, lim
 
 const formatError = (r: ApiResult<unknown>) => `[ERROR] ${r.status || "Network"}: ${r.error ?? "request failed"}`;
 
+const formatDomain = (d: WallpaperDomain, heading?: string) =>
+  `${heading ? `${heading}: ` : ""}**${d.name}** (${d.type})\n<${d.base_url}>\n-# ${truncate(d.tags.trim(), embedOptions.tagChars) || embedOptions.noTags}`;
+
 export default {
   listOptions,
   createEmbed,
   createListMessage,
   formatError,
+  formatDomain,
 };
