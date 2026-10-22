@@ -12,7 +12,7 @@
     "deploy-commands-local": "bun utils/deploy-commands.ts --local",
     "remove-commands": "bun utils/deploy-commands.ts --remove",
     "remove-commands-local": "bun utils/deploy-commands.ts --remove --local",
-    "check": "tsc --noEmit",
+    "check": "tsc",
     "lint": "biome check",
     "lint:fix": "biome check --write"
   },
