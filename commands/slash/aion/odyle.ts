@@ -69,27 +69,27 @@ export default {
     )
     .addSubcommand((sub) =>
       nameOption(
-        sub.setName("cap").setDescription("See a character's energy and when it caps."),
+        sub.setName("cap").setDescription("See a character's energy and when it overcaps."),
         "Character name (any user's)",
       ),
     )
     .addSubcommand((sub) =>
       sub
         .setName("get-characters")
-        .setDescription("List registered characters, their energy and cap times.")
+        .setDescription("List registered characters, their energy and overcap times.")
         .addBooleanOption((o) => o.setName("all").setDescription("Show every user's characters (default: true)")),
     )
     .addSubcommand((sub) =>
       nameOption(
         sub
           .setName("remind-enable")
-          .setDescription("DM me when a character is about to cap.")
+          .setDescription("DM me when a character is about to overcap.")
           .addIntegerOption((o) =>
             o
               .setName("when")
-              .setDescription("How long before capping to remind you")
+              .setDescription("How long before overcapping to remind you")
               .addChoices(
-                { name: "At cap", value: 0 },
+                { name: "At overcap", value: 0 },
                 { name: "24 hours", value: 24 },
                 { name: "12 hours", value: 12 },
                 { name: "8 hours", value: 8 },
@@ -171,9 +171,9 @@ export default {
         const c = resolveCharacter(interaction);
         const hours = interaction.options.getInteger("when", true);
         if (!addReminder(c.name, hours)) {
-          throw new UserError(`**${c.name}** already has a ${hours ? `${hours} hour` : "cap"} reminder.`);
+          throw new UserError(`**${c.name}** already has a ${hours ? `${hours} hour` : "overcap"} reminder.`);
         }
-        await reply(`You'll be DMed ${hours ? `${hours} hours before` : "when"} **${c.name}** caps.`);
+        await reply(`You'll be DMed ${hours ? `${hours} hours before` : "when"} **${c.name}** overcaps.`);
       } else if (sub === "remind-disable") {
         const c = resolveCharacter(interaction);
         const removed = removeReminders(c.name);

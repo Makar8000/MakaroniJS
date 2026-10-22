@@ -1,5 +1,5 @@
 import type { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from "discord.js";
-import { type Character, capOf, capTime, currentEnergy, getCharacter, getUserCharacters } from "./odyle-manager.ts";
+import { type Character, capOf, currentEnergy, getCharacter, getUserCharacters, overcapTime } from "./odyle-manager.ts";
 
 /** Thrown for user-facing problems; the message is sent back as the reply. */
 export class UserError extends Error {}
@@ -55,10 +55,10 @@ export function resolveCharacter(interaction: ChatInputCommandInteraction, anyOw
   return mine[0];
 }
 
-/** One-line summary: "**Name** - 120/840 - caps <t:..:F> (<t:..:R>)". */
+/** One-line summary: "**Name** - 120/840 - overcaps <t:..:F> (<t:..:R>)". */
 export function summary(c: Character) {
-  const cap = capTime(c);
-  const when = cap === null ? "**capped**" : `caps <t:${cap}:F> (<t:${cap}:R>)`;
+  const at = overcapTime(c);
+  const when = at === null ? "**overcapped**" : `overcaps <t:${at}:F> (<t:${at}:R>)`;
   return `**${c.name}** - ${currentEnergy(c)}/${capOf(c.member)} - ${when}`;
 }
 

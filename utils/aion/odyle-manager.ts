@@ -38,19 +38,16 @@ export function currentEnergy(c: Character, now = nowSec()) {
   return Math.min(cap, c.energy + PER_TICK * (tickIndex(now) - tickIndex(c.updated_at)));
 }
 
-/** Unix time (seconds) the snapshot reaches its cap (may be in the past), or null if it was already capped when saved. */
-function capAt(c: Character) {
-  const cap = capOf(c.member);
-  if (c.energy >= cap) {
-    return null;
-  }
-  return (tickIndex(c.updated_at) + Math.ceil((cap - c.energy) / PER_TICK)) * TICK + OFFSET;
+/** Unix time (seconds) of the first recharge that would push the snapshot past its cap (may be in the past). */
+function overcapAt(c: Character) {
+  const room = Math.max(0, capOf(c.member) - c.energy);
+  return (tickIndex(c.updated_at) + Math.floor(room / PER_TICK) + 1) * TICK + OFFSET;
 }
 
-/** Unix time (seconds) at which the character reaches its cap, or null if already capped. */
-export function capTime(c: Character, now = nowSec()) {
-  const at = capAt(c);
-  return at !== null && at > now ? at : null;
+/** Unix time (seconds) at which the character starts wasting recharges, or null if already overcapped. */
+export function overcapTime(c: Character, now = nowSec()) {
+  const at = overcapAt(c);
+  return at > now ? at : null;
 }
 
 export const getCharacter = (name: string): Character | undefined =>
@@ -91,7 +88,7 @@ export const addReminder = (name: string, hours: number) =>
 export const removeReminders = (name: string) =>
   prepare(aionDb, "DELETE FROM odyle_reminders WHERE character = ?").run(name).changes;
 
-/** DMs owners whose characters are within a reminder window of capping. Exported for testing. */
+/** DMs owners whose characters are within a reminder window of overcapping. Exported for testing. */
 export async function checkReminders(client: Client, now = nowSec()) {
   const rows: (Character & { hours: number; last_notified_cap: number | null })[] = prepare(
     aionDb,
@@ -99,11 +96,11 @@ export async function checkReminders(client: Client, now = nowSec()) {
   ).all();
 
   for (const row of rows) {
-    const cap = capAt(row);
-    if (cap === null || now < cap - row.hours * 3600 || row.last_notified_cap === cap) {
+    const cap = overcapAt(row);
+    if (now < cap - row.hours * 3600 || row.last_notified_cap === cap) {
       continue;
     }
-    // "Before cap" reminders are pointless once capped; "at cap" (0) only fires for a cap reached within the last tick.
+    // "Before" reminders are pointless once overcapped; "at overcap" (0) only fires for an overcap within the last tick.
     if (row.hours > 0 ? now >= cap : now - cap >= TICK) {
       continue;
     }
@@ -116,9 +113,9 @@ export async function checkReminders(client: Client, now = nowSec()) {
       const user = await client.users.fetch(row.owner_id);
       await user.send(
         row.hours > 0
-          ? `⚡ **${row.name}** will hit its Odyle Energy cap <t:${cap}:R> (<t:${cap}:F>). ` +
+          ? `**${row.name}** will overcap their Odyle Energy <t:${cap}:R> (<t:${cap}:F>). ` +
               `Currently ${currentEnergy(row, now)}/${capOf(row.member)} - time to spend some!`
-          : `⚡ **${row.name}** has hit its Odyle Energy cap (${capOf(row.member)}/${capOf(row.member)}). Time to spend some!`,
+          : `**${row.name}** is overcapping their Odyle Energy (${capOf(row.member)}/${capOf(row.member)}). Time to spend some!`,
       );
     } catch (error) {
       logger.error({ err: error }, `Failed to send Odyle reminder DM to ${row.owner_id}`);
