@@ -265,5 +265,4 @@ export default {
       }
     }
   },
-  error: SantaMessaging.handleError,
 } satisfies SlashCommand;

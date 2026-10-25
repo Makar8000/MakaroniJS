@@ -125,12 +125,17 @@ async function checkForInclinationTypes(client: Client) {
 
 async function sendMessageToUsers(client: Client, output: string) {
   for (const userId of getSubscribers()) {
-    if (output.length > repoConfig.CHARACTER_LIMIT) {
-      await client.users.send(userId, {
-        files: [new AttachmentBuilder(Buffer.from(output), { name: "content.txt" })],
-      });
-    } else {
-      await client.users.send(userId, `\`\`\`${output}\`\`\``);
+    // One closed DM must not skip the remaining users, or make the next check resend this patch to everyone.
+    try {
+      if (output.length > repoConfig.CHARACTER_LIMIT) {
+        await client.users.send(userId, {
+          files: [new AttachmentBuilder(Buffer.from(output), { name: "content.txt" })],
+        });
+      } else {
+        await client.users.send(userId, `\`\`\`${output}\`\`\``);
+      }
+    } catch (error) {
+      logger.error({ err: error }, `Failed to send HSR inclination update to ${userId}:`);
     }
   }
 }
@@ -189,20 +194,16 @@ async function scheduleInclinationCheck(client: Client, userId: string, isInitia
  *  True if cancelation was successful. False otherwise.
  */
 function cancelInclinationCheck(userId: string) {
-  if (jobs.has(repoConfig.KEYS.INCLINATION.jobName)) {
-    // Remove user from subscriptions
-    const result = prepare(db, "DELETE FROM hsr_subscriptions WHERE user_id = ?").run(userId);
-    if (result.changes === 0) {
-      return false;
-    }
-
-    if (getSubscribers().length === 0) {
-      return cancelJob(repoConfig.KEYS.INCLINATION.jobName);
-    }
-    return true;
+  // Remove user from subscriptions, even if the job never started.
+  const result = prepare(db, "DELETE FROM hsr_subscriptions WHERE user_id = ?").run(userId);
+  if (result.changes === 0) {
+    return false;
   }
 
-  return false;
+  if (getSubscribers().length === 0) {
+    cancelJob(repoConfig.KEYS.INCLINATION.jobName);
+  }
+  return true;
 }
 
 /**
@@ -268,6 +269,7 @@ function startJob(jobName: string, sched: string, fn: () => void) {
 function cancelJob(jobName: string) {
   if (jobs.has(jobName)) {
     jobs.get(jobName)!.cancel();
+    jobs.delete(jobName);
     return true;
   }
   return false;

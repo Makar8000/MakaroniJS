@@ -1,7 +1,5 @@
-import type { ChatInputCommandInteraction } from "discord.js";
 import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import etro from "../../../utils/ffxiv/etro.ts";
-import logger from "../../../utils/logger.ts";
 import type { SlashCommand } from "../../../utils/types.ts";
 
 export default {
@@ -17,18 +15,14 @@ export default {
     const etroSet = await etro.getFromUrl(etroUrl);
 
     if (etroSet) {
-      interaction.followUp({
+      await interaction.followUp({
         embeds: [etro.getAsEmbed(etroSet)],
       });
     } else {
-      interaction.followUp({
+      await interaction.followUp({
         content: "Network error or invalid etro url provided.",
         flags: MessageFlags.Ephemeral,
       });
     }
-  },
-  async error(interaction: ChatInputCommandInteraction, error: unknown) {
-    logger.error(`Error executing ${interaction.commandName}`);
-    logger.error(error);
   },
 } satisfies SlashCommand;

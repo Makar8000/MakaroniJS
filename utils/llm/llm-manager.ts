@@ -18,9 +18,9 @@ const prompts = new Collection<string, ChatMessages[]>();
 function getPromptContext(message: Message): ChatMessages[] {
   const messageId = message.reference?.messageId;
   if (messageId) {
-    return prompts.get(messageId) ?? [...config.systemMessages];
+    return prompts.get(messageId) ?? config.systemMessages();
   }
-  return [...config.systemMessages];
+  return config.systemMessages();
 }
 
 /**

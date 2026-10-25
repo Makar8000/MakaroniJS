@@ -1,9 +1,8 @@
-import type { ButtonInteraction, ChatInputCommandInteraction } from "discord.js";
+import type { ChatInputCommandInteraction } from "discord.js";
 import { MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import config from "../../../config.ts";
 import { chunkText } from "../../../utils/common.ts";
 import { DISCORD_LIMITS } from "../../../utils/constants.ts";
-import logger from "../../../utils/logger.ts";
 import type { SlashCommand, WallpaperDomain } from "../../../utils/types.ts";
 import wallpaperConfig from "../../../utils/wallpapers/config.ts";
 import WallpaperInteractions from "../../../utils/wallpapers/wallpaper-interactions.ts";
@@ -184,10 +183,6 @@ export default {
       return;
     }
     await interaction.update(page);
-  },
-  async error(interaction: ChatInputCommandInteraction | ButtonInteraction, error: unknown) {
-    logger.error(`Error executing ${"commandName" in interaction ? interaction.commandName : interaction.customId}`);
-    logger.error(error);
   },
 } satisfies SlashCommand;
 

@@ -5,12 +5,10 @@ import {
   ButtonStyle,
   type Client,
   EmbedBuilder,
-  type InteractionReplyOptions,
   LabelBuilder,
   MessageFlags,
   ModalBuilder,
   type ModalSubmitInteraction,
-  type RepliableInteraction,
   type SendableChannels,
   StringSelectMenuBuilder,
   type StringSelectMenuInteraction,
@@ -803,36 +801,6 @@ async function showHistory(interaction: StringSelectMenuInteraction | ButtonInte
 }
 
 /**
- * Handles errors thrown by a Santa command's execute/button/selectMenu/modalSubmit, notifying the user.
- * Shared by `/ss` and `/ss-admin` as their `error` handler.
- * @param {Interaction} interaction The interaction that was being handled when the error occurred.
- * @param {Error} error The error that was thrown.
- */
-async function handleError(interaction: RepliableInteraction, error: unknown) {
-  const source =
-    "commandName" in interaction
-      ? interaction.commandName
-      : "customId" in interaction
-        ? interaction.customId
-        : "unknown";
-  logger.error(`Error executing ${source}`);
-  logger.error(error);
-  const payload: InteractionReplyOptions = {
-    content: "[ERROR] Something went wrong while processing your request. Please try again.",
-    flags: MessageFlags.Ephemeral,
-  };
-  try {
-    if (interaction.deferred || interaction.replied) {
-      await interaction.followUp(payload);
-    } else {
-      await interaction.reply(payload);
-    }
-  } catch (notifyError) {
-    logger.error({ err: notifyError }, "Failed to notify user of the above error:");
-  }
-}
-
-/**
  * Builds the warning appended to admin replies when some DMs couldn't be delivered.
  * @param {String[]} failed The Discord IDs of users who could not be DMed.
  * @returns {String} The warning line, or an empty string if nothing failed.
@@ -844,7 +812,6 @@ function dmFailedWarning(failed: string[]) {
 export default {
   DIRECTION_LABEL,
   GIFT_STATUS_LABEL,
-  handleError,
   dmFailedWarning,
   buildTargetSelectRow,
   buildHistorySelectRow,

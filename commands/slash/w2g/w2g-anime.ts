@@ -1,6 +1,4 @@
-import type { ChatInputCommandInteraction } from "discord.js";
 import { MessageFlags, SlashCommandBuilder } from "discord.js";
-import logger from "../../../utils/logger.ts";
 import type { SlashCommand } from "../../../utils/types.ts";
 import consumet from "../../../utils/w2g/anime.ts";
 import config from "../../../utils/w2g/config.ts";
@@ -32,7 +30,7 @@ export default {
 
     const animeList = await consumet.search(animeName);
     if (animeList.length < 1) {
-      interaction.followUp({
+      await interaction.followUp({
         content: `[ERROR] Unable to find anime with the name \`${animeName}\`.`,
         flags: MessageFlags.Ephemeral,
       });
@@ -40,7 +38,7 @@ export default {
     }
     const animeInfo = await consumet.fetchAnimeInfo(animeList[0].id, animeName, episodeNumber);
     if (!animeInfo) {
-      interaction.followUp({
+      await interaction.followUp({
         content: `[ERROR] Unable to find any episodes for \`${animeName}\`.`,
         flags: MessageFlags.Ephemeral,
       });
@@ -48,7 +46,7 @@ export default {
     }
     const episodeId = animeInfo.episodes?.find((e) => e.number === episodeNumber)?.id;
     if (!episodeId) {
-      interaction.followUp({
+      await interaction.followUp({
         content: `[ERROR] Unable to find episode ${episodeNumber} of \`${animeName}\`.`,
         flags: MessageFlags.Ephemeral,
       });
@@ -56,8 +54,8 @@ export default {
     }
     const servers = await consumet.fetchEpisodeServers(episodeId);
     const videoUrl = servers?.shift()?.url;
-    if (servers.length < 1 || !videoUrl) {
-      interaction.followUp({
+    if (!videoUrl) {
+      await interaction.followUp({
         content: `[ERROR] Unable to find video link for episode ${episodeNumber} of \`${animeName}\`.`,
         flags: MessageFlags.Ephemeral,
       });
@@ -81,7 +79,7 @@ export default {
         });
         await interaction.deleteReply();
       } else {
-        interaction.followUp({
+        await interaction.followUp({
           content: "Network error or invalid video url provided.",
           flags: MessageFlags.Ephemeral,
         });
@@ -98,15 +96,11 @@ export default {
         });
         await interaction.deleteReply();
       } else {
-        interaction.followUp({
+        await interaction.followUp({
           content: "Unable to add video. This could be due to a bad room ID or invalid video link.",
           flags: MessageFlags.Ephemeral,
         });
       }
     }
-  },
-  async error(interaction: ChatInputCommandInteraction, error: unknown) {
-    logger.error(`Error executing ${interaction.commandName}`);
-    logger.error(error);
   },
 } satisfies SlashCommand;

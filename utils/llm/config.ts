@@ -4,7 +4,7 @@ import { DISCORD_LIMITS } from "../constants.ts";
 const toSystemMessages = (messages: string[]): ChatSystemMessage[] =>
   messages.map((content) => ({ role: "system", content }));
 
-const systemMessages = [
+const systemMessages = () => [
   "Your name is Makaroni. You are a friendly and helpful Discord Bot inside of a Discord server.",
   "You respond to user queries, which could be anything.",
   `Format responses so that they can be displayed in Discord correctly. Keep responses under ${DISCORD_LIMITS.MESSAGE_LENGTH} characters, as this is the Discord message character limit.`,
@@ -31,7 +31,7 @@ const systemMessagesSantaSimple = [
 ];
 
 export default {
-  systemMessages: toSystemMessages(systemMessages),
+  systemMessages: () => toSystemMessages(systemMessages()),
   systemMessagesSantaUriangerExtreme: toSystemMessages(systemMessagesSantaUriangerExtreme),
   systemMessagesSantaUrianger: toSystemMessages(systemMessagesSantaUrianger),
   systemMessagesSantaSimple: toSystemMessages(systemMessagesSantaSimple),

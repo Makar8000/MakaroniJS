@@ -1,4 +1,3 @@
-import type { ChatInputCommandInteraction } from "discord.js";
 import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import logger from "../../../utils/logger.ts";
 import config from "../../../utils/reminders/config.ts";
@@ -106,9 +105,5 @@ export default {
         });
       }
     }
-  },
-  async error(interaction: ChatInputCommandInteraction, error: unknown) {
-    logger.error(`Error executing ${interaction.commandName}`);
-    logger.error(error);
   },
 } satisfies SlashCommand;

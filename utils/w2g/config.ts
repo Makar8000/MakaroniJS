@@ -26,7 +26,7 @@ const createGeneric = (roomUrl: string, videoUrl: string, key: string, user: Use
       .setColor(embedOptions.color)
       .setAuthor({
         name: `${user.displayName} ${msg}`,
-        iconURL: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`,
+        iconURL: user.displayAvatarURL(),
         url: `${roomUrl}`,
       })
       .setThumbnail(embedOptions.thumbnailUrl)
@@ -129,7 +129,7 @@ const createGenericAnime = (animeInfo: AnimeInfo, user: User, msg: string) => {
       .setColor((animeInfo.color ?? embedOptionsAnime.color) as `#${string}` | number)
       .setAuthor({
         name: `${user.displayName} ${msg}`,
-        iconURL: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`,
+        iconURL: user.displayAvatarURL(),
         url: `${animeInfo.roomUrl}`,
       })
       .setThumbnail(animeInfo.image ?? null)

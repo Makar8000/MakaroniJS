@@ -87,7 +87,7 @@ const embedOptions = Object.freeze({
 
 export default {
   // Etro
-  etroApiUrl: "http://etro.gg/api/gearsets/",
+  etroApiUrl: "https://etro.gg/api/gearsets/",
   etroFoodApiUrl: "https://etro.gg/api/food/",
   defaultEtroSet,
   tokenTypes,
@@ -96,7 +96,7 @@ export default {
   tomeCost,
 
   // XIVAPI
-  apiUrl: "http://xivapi.com",
+  apiUrl: "https://xivapi.com",
 
   // Embed Config
   embedOptions,

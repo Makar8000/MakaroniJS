@@ -1,4 +1,3 @@
-import type { ChatInputCommandInteraction } from "discord.js";
 import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import { messages } from "../../../utils/hsr/config.ts";
 import HSRManager from "../../../utils/hsr/hsr-manager.ts";
@@ -98,9 +97,5 @@ export default {
         }
       }
     }
-  },
-  async error(interaction: ChatInputCommandInteraction, error: unknown) {
-    logger.error(`Error executing ${interaction.commandName}`);
-    logger.error(error);
   },
 } satisfies SlashCommand;

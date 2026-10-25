@@ -9,7 +9,7 @@ export default {
       return;
     }
 
-    const messageCmd = message.content.split(" ", 2)[0].toLowerCase();
+    const messageCmd = message.content.split(/\s/, 1)[0].toLowerCase();
     const command = message.client.commands.message.get(messageCmd);
     if (!command) {
       return;

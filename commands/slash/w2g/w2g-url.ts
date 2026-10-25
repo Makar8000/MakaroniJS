@@ -1,6 +1,4 @@
-import type { ChatInputCommandInteraction } from "discord.js";
 import { MessageFlags, SlashCommandBuilder } from "discord.js";
-import logger from "../../../utils/logger.ts";
 import type { SlashCommand } from "../../../utils/types.ts";
 import config from "../../../utils/w2g/config.ts";
 import w2g from "../../../utils/w2g/w2g.ts";
@@ -36,7 +34,7 @@ export default {
         });
         await interaction.deleteReply();
       } else {
-        interaction.followUp({
+        await interaction.followUp({
           content: "Network error or invalid video url provided.",
           flags: MessageFlags.Ephemeral,
         });
@@ -50,15 +48,11 @@ export default {
         });
         await interaction.deleteReply();
       } else {
-        interaction.followUp({
+        await interaction.followUp({
           content: "Unable to add video. This could be due to a bad room ID or invalid video link.",
           flags: MessageFlags.Ephemeral,
         });
       }
     }
-  },
-  async error(interaction: ChatInputCommandInteraction, error: unknown) {
-    logger.error(`Error executing ${interaction.commandName}`);
-    logger.error(error);
   },
 } satisfies SlashCommand;

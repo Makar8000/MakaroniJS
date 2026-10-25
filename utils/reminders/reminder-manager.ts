@@ -1,4 +1,4 @@
-import { type Client, Collection } from "discord.js";
+import { type Channel, type Client, Collection } from "discord.js";
 import scheduler from "node-schedule";
 import { db, prepare } from "../db/db.ts";
 import logger from "../logger.ts";
@@ -155,12 +155,17 @@ async function sendReminder(client: Client, reminder: Reminder) {
     const mention = reminder.mention ?? `<@${reminder.authorId}>`;
     const message = `Hey ${mention}, ${reminder.message}`;
 
-    const channelId = (client as unknown as { channelId?: string }).channelId;
-    if (channelId) {
-      const channel = await client.channels.fetch(channelId, { force: true, allowUnknownGuild: true });
-      if (channel?.isSendable()) {
-        await channel.send(message);
+    // Post where the reminder was created. If that channel is gone or out of reach, DM the author instead.
+    let channel: Channel | null = null;
+    if (reminder.channelId) {
+      try {
+        channel = await client.channels.fetch(reminder.channelId, { force: true, allowUnknownGuild: true });
+      } catch (error) {
+        logger.warn({ err: error }, `Reminder ${reminder.id}: channel unavailable, sending a DM instead`);
       }
+    }
+    if (channel?.isSendable()) {
+      await channel.send(message);
     } else {
       await client.users.send(reminder.authorId, message);
     }

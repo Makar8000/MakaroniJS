@@ -1,4 +1,3 @@
-import type { ChatInputCommandInteraction } from "discord.js";
 import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import {
   addCharacter,
@@ -25,7 +24,6 @@ import {
 } from "../../../utils/aion/odyle-utils.ts";
 import { chunkText } from "../../../utils/common.ts";
 import { DISCORD_LIMITS } from "../../../utils/constants.ts";
-import logger from "../../../utils/logger.ts";
 import type { SlashCommand } from "../../../utils/types.ts";
 
 export default {
@@ -199,10 +197,5 @@ export default {
         .slice(0, DISCORD_LIMITS.AUTOCOMPLETE_CHOICES)
         .map((c) => ({ name: c.name, value: c.name })),
     );
-  },
-
-  async error(interaction: ChatInputCommandInteraction, error: unknown) {
-    logger.error(`Error executing ${interaction.commandName}`);
-    logger.error(error);
   },
 } satisfies SlashCommand;

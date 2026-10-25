@@ -12,7 +12,9 @@ export default {
   execute(client: Client<true>) {
     logger.info(`${client.user.username} is now ${client.user.presence.status}!`);
     ReminderManager.initJobs(client);
-    HSRManager.initJobs(client);
+    HSRManager.initJobs(client).catch((error) =>
+      logger.error({ err: error }, "Failed to start HSR inclination checks:"),
+    );
     SantaManager.init(client);
     OdyleManager.initJobs(client);
   },

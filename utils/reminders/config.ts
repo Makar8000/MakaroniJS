@@ -10,12 +10,12 @@ const createSuccess = (reminder: Reminder, user: User) => {
     .setColor(0x57f287)
     .setAuthor({
       name: user.displayName,
-      iconURL: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`,
+      iconURL: user.displayAvatarURL(),
     })
     .setTitle("Reminder scheduled successfully!")
     .setDescription(`<t:${reminder.unixTs}:F>\n(<t:${reminder.unixTs}:R>)`)
     .addFields(fields)
-    .setFooter({ text: `To cancel, use: /reminde cancel ${reminder.id}` });
+    .setFooter({ text: `To cancel, use: /reminder cancel ${reminder.id}` });
   return embed;
 };
 
@@ -33,12 +33,12 @@ const listSuccess = (reminders: Reminder[], user: User) => {
     .setColor(0x7289da)
     .setAuthor({
       name: user.displayName,
-      iconURL: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`,
+      iconURL: user.displayAvatarURL(),
     })
     // .setTitle('Reminder List')
     .setDescription("See below for a list of Reminders.")
     .addFields(fields)
-    .setFooter({ text: "To cancel a reminder, use: /reminde cancel <id>" });
+    .setFooter({ text: "To cancel a reminder, use: /reminder cancel <id>" });
   return embed;
 };
 
@@ -49,7 +49,7 @@ export default {
     `An error has occured when trying to schedule your reminder:\n<t:${time}:F> (<t:${time}:R>)\n\nPlease make sure your timestamp is correct. The expected timeformat is Unix timestamp in seconds. You can use <https://hammertime.cyou/> to generate a timestamp.`,
   createSuccess,
   cancelFail: (id: string) =>
-    `The reminder with ID \`${id}\` is invalid. Try running \`/remind list\` to get a list of your reminders and their IDs.`,
+    `The reminder with ID \`${id}\` is invalid. Try running \`/reminder list\` to get a list of your reminders and their IDs.`,
   cancelSuccess: (id: string) => `The reminder with ID \`${id}\` was successfully canceled.`,
   listFail: () => "You currently do not have any reminders scheduled.",
   listSuccess,

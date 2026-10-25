@@ -1,4 +1,3 @@
-import type { ChatInputCommandInteraction } from "discord.js";
 import {
   ActivityType,
   MessageFlags,
@@ -59,7 +58,7 @@ export default {
     logger.debug(`Resolving subcommand: ${subcommand}`);
 
     if (!config.users.admins.includes(interaction.user.id)) {
-      interaction.reply({
+      await interaction.reply({
         content: "You do not have permission to run this command.",
         flags: MessageFlags.Ephemeral,
       });
@@ -85,9 +84,5 @@ export default {
       });
       logger.info(reply);
     }
-  },
-  async error(interaction: ChatInputCommandInteraction, error: unknown) {
-    logger.error(`Error executing ${interaction.commandName}`);
-    logger.error(error);
   },
 } satisfies SlashCommand;
