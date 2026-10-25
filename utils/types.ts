@@ -82,6 +82,7 @@ export interface Wallpaper {
   file_url: string;
   tags: string;
   tag_string: string;
+  enabled: boolean;
 }
 
 /** Fields accepted by the wallpapers API when creating (all required) or updating (all optional). */

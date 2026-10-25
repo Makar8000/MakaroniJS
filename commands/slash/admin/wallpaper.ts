@@ -19,7 +19,7 @@ export default {
     .addSubcommand((sub) =>
       sub
         .setName("list")
-        .setDescription("Browse enabled wallpapers.")
+        .setDescription("Browse wallpapers.")
         .addStringOption((o) =>
           o
             .setName("tags")

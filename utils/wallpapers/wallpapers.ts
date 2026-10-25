@@ -36,9 +36,9 @@ async function request<T>(
   }
 }
 
-/** One page of enabled wallpapers in stable id order, optionally containing ALL of the space-delimited `tags`. */
+/** One page of wallpapers, disabled included, in stable id order, optionally containing ALL of the space-delimited `tags`. */
 const list = async (opts: { limit?: number; offset?: number; tags?: string } = {}): Promise<PagedResult<Wallpaper>> => {
-  const params = new URLSearchParams({ random: "false" });
+  const params = new URLSearchParams({ random: "false", include_disabled: "true" });
   if (opts.limit) {
     params.set("limit", `${opts.limit}`);
   }

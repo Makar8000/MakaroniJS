@@ -19,7 +19,9 @@ const COMMAND_NAME = "wallpaper";
 const embedOptions = Object.freeze({
   color: 0x9b59b6,
   fieldTags: "Tags",
+  fieldEnabled: "Enabled",
   noTags: "None",
+  disabledMark: " *(disabled)*",
   titleChars: 200,
   tagChars: 300,
 });
@@ -43,10 +45,13 @@ const createEmbed = (w: Wallpaper, heading?: string) => {
     .setTitle(truncate(`#${w.id} ${w.tag_string}`, embedOptions.titleChars))
     .setURL(w.file_url)
     .setThumbnail(w.file_url)
-    .addFields({
-      name: embedOptions.fieldTags,
-      value: truncate(w.tags.trim(), embedOptions.tagChars) || embedOptions.noTags,
-    });
+    .addFields(
+      {
+        name: embedOptions.fieldTags,
+        value: truncate(w.tags.trim(), embedOptions.tagChars) || embedOptions.noTags,
+      },
+      { name: embedOptions.fieldEnabled, value: w.enabled ? "Yes" : "No" },
+    );
   if (heading) {
     embed.setAuthor({ name: heading });
   }
@@ -99,7 +104,7 @@ const createListMessage = (rows: Wallpaper[], total: number, offset: number, lim
       .map((w) => {
         const title = truncate(w.tag_string, listOptions.titleChars);
         const tagLine = truncate(w.tags.trim(), listOptions.tagChars) || embedOptions.noTags;
-        return `**#${w.id}** [${title}](${w.file_url})\n-# ${tagLine}`;
+        return `**#${w.id}**${w.enabled ? "" : embedOptions.disabledMark} [${title}](${w.file_url})\n-# ${tagLine}`;
       })
       .join("\n");
     container
