@@ -1,17 +1,24 @@
 import { MessageFlags, SlashCommandBuilder } from "discord.js";
+import config from "../../../config.ts";
 import {
   addCharacter,
   addReminder,
+  BONUS_CAP,
   capOf,
   currentEnergy,
   getAllCharacters,
   getUserCharacters,
+  LARGE_REFILL_AMOUNT,
+  nowSec,
   removeCharacter,
   removeReminders,
+  SMALL_REFILL_AMOUNT,
+  setSeasonEnd,
   updateCharacter,
 } from "../../../utils/aion/odyle-manager.ts";
 import {
   amountOption,
+  details,
   fresh,
   getMembership,
   MAX_CAP,
@@ -59,15 +66,33 @@ export default {
     )
     .addSubcommand((sub) =>
       nameOption(
-        amountOption(sub.setName("set").setDescription("Set your current Odyle Energy."), "Current Odyle Energy"),
-      ),
+        amountOption(
+          sub.setName("set").setDescription("Set your current Odyle Energy, bonus gauge and refills."),
+          "Current Odyle Energy",
+        ),
+      )
+        .addIntegerOption((o) =>
+          o.setName("bonus").setDescription("Bonus Odyle Energy gauge").setMinValue(0).setMaxValue(BONUS_CAP),
+        )
+        .addIntegerOption((o) =>
+          o
+            .setName("large-refills")
+            .setDescription(`Large Odyle Energy refills (+${LARGE_REFILL_AMOUNT}) in your inventory`)
+            .setMinValue(0),
+        )
+        .addIntegerOption((o) =>
+          o
+            .setName("small-refills")
+            .setDescription(`Small Odyle Energy refills (+${SMALL_REFILL_AMOUNT}) in your inventory`)
+            .setMinValue(0),
+        ),
     )
     .addSubcommand((sub) =>
       nameOption(amountOption(sub.setName("use").setDescription("Spend Odyle Energy."), "Amount spent")),
     )
     .addSubcommand((sub) =>
       nameOption(
-        sub.setName("cap").setDescription("See a character's energy and when it overcaps."),
+        sub.setName("cap").setDescription("See a character's energy, when it overcaps, bonus gauge and refills."),
         "Character name (any user's)",
       ),
     )
@@ -99,6 +124,17 @@ export default {
     )
     .addSubcommand((sub) =>
       nameOption(sub.setName("remind-disable").setDescription("Remove ALL reminders for a character.")),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("update-season")
+        .setDescription("Set when the current season ends (admin only).")
+        .addIntegerOption((o) =>
+          o
+            .setName("time")
+            .setDescription("Season end as a Unix Timestamp (Seconds). https://hammertime.cyou/")
+            .setRequired(true),
+        ),
     ),
 
   async execute(interaction) {
@@ -126,7 +162,7 @@ export default {
       } else if (sub === "membership") {
         const c = resolveCharacter(interaction);
         const member = getMembership(interaction);
-        updateCharacter(c, currentEnergy(c), member);
+        updateCharacter(c, currentEnergy(c), { member });
         await reply(`Membership ${member ? "enabled" : "disabled"}.\n${summary(fresh(c.name))}`);
       } else if (sub === "set") {
         const c = resolveCharacter(interaction);
@@ -134,19 +170,24 @@ export default {
         if (amount > capOf(c.member)) {
           throw new UserError(`${c.name}'s cap is ${capOf(c.member)}.`);
         }
-        updateCharacter(c, amount);
-        await reply(summary(fresh(c.name)));
+        updateCharacter(c, amount, {
+          bonus: interaction.options.getInteger("bonus") ?? c.bonus,
+          large_refills: interaction.options.getInteger("large-refills") ?? c.large_refills,
+          small_refills: interaction.options.getInteger("small-refills") ?? c.small_refills,
+        });
+        await reply(details(fresh(c.name)));
       } else if (sub === "use") {
         const c = resolveCharacter(interaction);
         const amount = interaction.options.getInteger("amount", true);
         const energy = currentEnergy(c);
-        if (amount > energy) {
-          throw new UserError(`${c.name} only has ${energy} Odyle Energy.`);
+        if (amount > energy + c.bonus) {
+          throw new UserError(`${c.name} only has ${energy} Odyle Energy and ${c.bonus} bonus.`);
         }
-        updateCharacter(c, energy - amount);
-        await reply(summary(fresh(c.name)));
+        const regular = Math.min(amount, energy); // regular energy is always spent before bonus
+        updateCharacter(c, energy - regular, { bonus: c.bonus - (amount - regular) });
+        await reply(details(fresh(c.name)));
       } else if (sub === "cap") {
-        await reply(summary(resolveCharacter(interaction, true)));
+        await reply(details(resolveCharacter(interaction, true)));
       } else if (sub === "get-characters") {
         const all = interaction.options.getBoolean("all") ?? true;
         const list = all ? getAllCharacters() : getUserCharacters(interaction.user.id);
@@ -176,6 +217,16 @@ export default {
         const c = resolveCharacter(interaction);
         const removed = removeReminders(c.name);
         await reply(removed ? `Removed ${removed} reminder(s) for **${c.name}**.` : `**${c.name}** had no reminders.`);
+      } else if (sub === "update-season") {
+        if (!config.users.admins.includes(interaction.user.id)) {
+          throw new UserError("You do not have permission to run this command.");
+        }
+        const time = interaction.options.getInteger("time", true);
+        if (time <= nowSec() || `${time}`.length !== 10) {
+          throw new UserError(`\`${time}\` is not a future Unix timestamp in seconds. Try <https://hammertime.cyou/>.`);
+        }
+        setSeasonEnd(time);
+        await reply(`The season now ends <t:${time}:F> (<t:${time}:R>).`);
       }
     } catch (error) {
       if (error instanceof UserError) {

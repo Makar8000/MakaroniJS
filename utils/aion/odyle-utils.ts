@@ -1,5 +1,14 @@
 import type { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from "discord.js";
-import { type Character, capOf, currentEnergy, getCharacter, getUserCharacters, overcapTime } from "./odyle-manager.ts";
+import {
+  BONUS_CAP,
+  type Character,
+  capOf,
+  currentEnergy,
+  getCharacter,
+  getUserCharacters,
+  overcapTime,
+  refillRuns,
+} from "./odyle-manager.ts";
 
 /** Thrown for user-facing problems; the message is sent back as the reply. */
 export class UserError extends Error {}
@@ -60,6 +69,19 @@ export function summary(c: Character) {
   const at = overcapTime(c);
   const when = at === null ? "**overcapped**" : `overcaps <t:${at}:F> (<t:${at}:R>)`;
   return `**${c.name}** - ${currentEnergy(c)}/${capOf(c.member)} - ${when}`;
+}
+
+/** `summary`, plus the bonus gauge, refills, and the runs needed to use every refill before the season ends. */
+export function details(c: Character) {
+  const lines = [
+    summary(c),
+    `Bonus: ${c.bonus}/${BONUS_CAP} - Refills: ${c.large_refills} large, ${c.small_refills} small`,
+  ];
+  const r = refillRuns(c);
+  if (r) {
+    lines.push(`Runs to use every refill this season (<t:${r.end}:R>): **${r.runs}** now, or ~${r.perDay}/day`);
+  }
+  return lines.join("\n");
 }
 
 /** Re-reads a character that is known to exist (e.g. just written). */

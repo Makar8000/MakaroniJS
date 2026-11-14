@@ -7,7 +7,7 @@ import { dataDir, prepare } from "../db/db.ts";
 import logger from "../logger.ts";
 
 /**
- * Aion 2 database (characters + reminders).
+ * Aion 2 database (characters, reminders, season).
  */
 export const aionDb = new Database(join(dataDir, "aion.db"), { create: true, strict: true });
 aionDb.run("PRAGMA foreign_keys = ON");
@@ -16,6 +16,10 @@ aionDb.run(readFileSync(join(import.meta.dirname, "aion-schema.sql"), "utf8"));
 const TICK = 3 * 3600;
 const OFFSET = 3600; // recharges happen at 01:00, 04:00, 07:00... UTC
 const PER_TICK = 15;
+export const BONUS_CAP = 2000;
+const ENERGY_COST_PER_RUN = 40;
+export const LARGE_REFILL_AMOUNT = 40;
+export const SMALL_REFILL_AMOUNT = 10;
 
 export interface Character {
   name: string;
@@ -23,6 +27,9 @@ export interface Character {
   energy: number;
   updated_at: number;
   member: number;
+  bonus: number;
+  large_refills: number;
+  small_refills: number;
 }
 
 export const nowSec = () => Math.floor(Date.now() / 1000);
@@ -50,6 +57,28 @@ export function overcapTime(c: Character, now = nowSec()) {
   return at > now ? at : null;
 }
 
+/**
+ * Runs needed to use every refill before the season ends, or null if no season is running.
+ * Assumes `ENERGY_COST_PER_RUN` energy per box. Members can open two per run.
+ * `runs`: if done right now. `perDay`: steady pace that also spends the energy recharged meanwhile.
+ */
+export function refillRuns(c: Character, now = nowSec()) {
+  const end: number | undefined = prepare(aionDb, "SELECT ends_at FROM season").get()?.ends_at;
+  if (!end || end <= now) {
+    return null;
+  }
+  // Bonus that has to be spent so every refill fits under the cap.
+  const excess = c.bonus + LARGE_REFILL_AMOUNT * c.large_refills + SMALL_REFILL_AMOUNT * c.small_refills - BONUS_CAP;
+  if (excess <= 0) {
+    return { end, runs: 0, perDay: 0 };
+  }
+  const cost = ENERGY_COST_PER_RUN * (c.member ? 2 : 1);
+  const energy = currentEnergy(c, now) + excess; // regular energy is always spent before bonus
+  const recharge = PER_TICK * (tickIndex(end) - tickIndex(now));
+  const perDay = (energy + recharge) / cost / ((end - now) / 86400);
+  return { end, runs: Math.ceil(energy / cost), perDay: Math.ceil(perDay * 10) / 10 };
+}
+
 export const getCharacter = (name: string): Character | undefined =>
   prepare(aionDb, "SELECT * FROM characters WHERE name = ?").get(name) ?? undefined;
 
@@ -70,15 +99,17 @@ export function addCharacter(name: string, ownerId: string, energy: number, memb
 
 export const removeCharacter = (name: string) => prepare(aionDb, "DELETE FROM characters WHERE name = ?").run(name);
 
-/** Re-snapshots a character with a new energy value and/or membership. */
-export function updateCharacter(c: Character, energy: number, member = c.member) {
-  prepare(aionDb, "UPDATE characters SET energy = ?, updated_at = ?, member = ? WHERE name = ?").run(
-    energy,
-    nowSec(),
-    member,
-    c.name,
-  );
+/** Re-snapshots a character with a new energy value, plus any other changed fields. */
+export function updateCharacter(c: Character, energy: number, changes: Partial<Character> = {}) {
+  const { member, bonus, large_refills, small_refills } = { ...c, ...changes };
+  prepare(
+    aionDb,
+    "UPDATE characters SET energy = ?, updated_at = ?, member = ?, bonus = ?, large_refills = ?, small_refills = ? WHERE name = ?",
+  ).run(energy, nowSec(), member, bonus, large_refills, small_refills, c.name);
 }
+
+export const setSeasonEnd = (endsAt: number) =>
+  prepare(aionDb, "INSERT OR REPLACE INTO season (id, ends_at) VALUES (1, ?)").run(endsAt);
 
 /** Returns false if a reminder with this lead time already exists. */
 export const addReminder = (name: string, hours: number) =>
