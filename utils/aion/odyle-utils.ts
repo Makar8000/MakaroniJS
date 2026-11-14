@@ -78,7 +78,7 @@ export function details(c: Character) {
     `Bonus: ${c.bonus}/${BONUS_CAP} - Refills: ${c.large_refills} large, ${c.small_refills} small`,
   ];
   const r = refillRuns(c);
-  if (r) {
+  if (r?.runs) {
     lines.push(`Runs to use every refill this season (<t:${r.end}:R>): **${r.runs}** now, or ~${r.perDay}/day`);
   }
   return lines.join("\n");
